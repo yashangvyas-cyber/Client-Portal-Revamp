@@ -52,3 +52,21 @@ Since you are on Ubuntu, this is the easiest way:
 6.  Click **"Commit changes"** (green button).
 
 > **Tip**: If it says "Too many files", try dragging them in smaller batches (e.g. just the `src` folder first, commit, then the rest).
+
+## How to Connect to Vercel (Recommended)
+Since your code is now on GitHub, you can link it to Vercel for automatic updates.
+
+1.  Go to **[Vercel Dashboard](https://vercel.com/dashboard)**.
+2.  Click **"Add New..."** -> **"Project"**.
+3.  Click **"Import"** next to your `Client-Portal-Revamp` repository.
+4.  Leave settings as default (Framework: Vite).
+5.  Click **"Deploy"**.
+
+> **Troubleshooting**: If you don't see your repository in the list (like "No Results Found"):
+> 1. Click the **"Configure GitHub App"** button.
+> 2. It will open a GitHub page. Scroll down to "Repository access".
+> 3. Select **"All repositories"** (easiest) or search for `Client-Portal-Revamp`.
+> 4. Click **"Save"**.
+> 5. Back on Vercel, the repo will appear!
+
+Your site will be live in ~1 minute! Every time you `git push` in the future, Vercel will update your site automatically.
