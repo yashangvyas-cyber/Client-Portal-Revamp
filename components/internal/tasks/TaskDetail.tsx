@@ -47,10 +47,14 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, project, onBack 
    const [isInternalNote, setIsInternalNote] = useState(false);
 
    // Team Members with Ghost State
+   // isProjectGhost: true means the resource is marked as ghost at project level and cannot be made visible
    const [team, setTeam] = useState([
-      { id: 'u1', name: 'Harvey Spector', avatar: 'HS', color: 'bg-purple-100 text-purple-600', isGhost: false },
-      { id: 'u4', name: 'Kishan (Shadow)', avatar: 'KS', color: 'bg-slate-200 text-slate-600', isGhost: true }
+      { id: 'u1', name: 'Harvey Spector', avatar: 'HS', color: 'bg-purple-100 text-purple-600', isGhost: false, isProjectGhost: false },
+      { id: 'u4', name: 'Kishan (Shadow)', avatar: 'KS', color: 'bg-slate-200 text-slate-600', isGhost: true, isProjectGhost: true }
    ]);
+
+   // Error state for ghost toggle
+   const [ghostError, setGhostError] = useState<string | null>(null);
 
    // Mock data matching the screenshot for US-002
    const task = {
@@ -100,8 +104,17 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, project, onBack 
    };
 
    const toggleGhost = (userId: string) => {
-      setTeam(prev => prev.map(member =>
-         member.id === userId ? { ...member, isGhost: !member.isGhost } : member
+      const member = team.find(m => m.id === userId);
+
+      // Check if this is a project-level ghost resource
+      if (member?.isProjectGhost && member.isGhost) {
+         setGhostError(`Cannot make "${member.name}" visible to client. This resource is marked as ghost at the project level and must remain hidden from clients for all tasks.`);
+         setTimeout(() => setGhostError(null), 5000); // Clear error after 5 seconds
+         return;
+      }
+
+      setTeam(prev => prev.map(m =>
+         m.id === userId ? { ...m, isGhost: !m.isGhost } : m
       ));
    };
 
@@ -264,8 +277,8 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, project, onBack 
                            key={tab}
                            onClick={() => setActiveActivityTab(tab)}
                            className={`px-4 py-2 text-xs font-semibold border-b-2 transition-colors ${activeActivityTab === tab
-                                 ? 'text-indigo-600 border-indigo-600 bg-indigo-50/30'
-                                 : 'text-slate-500 border-transparent hover:text-slate-700'
+                              ? 'text-indigo-600 border-indigo-600 bg-indigo-50/30'
+                              : 'text-slate-500 border-transparent hover:text-slate-700'
                               }`}
                         >
                            {tab === 'Discussion' && <MessageSquare className="w-3 h-3 inline mr-1" />}
@@ -344,8 +357,8 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, project, onBack 
                                     </div>
 
                                     <div className={`rounded-lg p-3 text-sm mb-1 ${discussion.isInternal
-                                          ? 'bg-amber-50 border border-amber-200 text-amber-900'
-                                          : 'bg-slate-50 border border-slate-200 text-slate-700'
+                                       ? 'bg-amber-50 border border-amber-200 text-amber-900'
+                                       : 'bg-slate-50 border border-slate-200 text-slate-700'
                                        }`}>
                                        {discussion.message}
                                     </div>
@@ -417,6 +430,19 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, project, onBack 
                            <Plus className="w-3 h-3" /> Add
                         </button>
                      </div>
+
+                     {/* Ghost Toggle Error Message */}
+                     {ghostError && (
+                        <div className="mb-3 bg-red-50 border border-red-200 rounded-lg p-3 animate-fade-in">
+                           <div className="flex items-start gap-2">
+                              <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                              <div>
+                                 <div className="text-xs font-bold text-red-800 mb-1">Cannot Change Visibility</div>
+                                 <div className="text-xs text-red-700">{ghostError}</div>
+                              </div>
+                           </div>
+                        </div>
+                     )}
 
                      <div className="space-y-2">
                         {team.map(member => (
