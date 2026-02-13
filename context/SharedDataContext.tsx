@@ -20,6 +20,9 @@ interface SharedDataActions {
     addDocument: (projectId: string, document: ProjectDocument) => void;
     updateDocument: (projectId: string, documentId: string, updates: Partial<ProjectDocument>) => void;
     deleteDocument: (projectId: string, documentId: string) => void;
+    updateClientRequest: (projectId: string, requestId: string, updates: Partial<ClientRequest>) => void;
+    deleteClientRequest: (projectId: string, requestId: string) => void;
+    addTask: (projectId: string, task: Task) => void;
 }
 
 const SharedDataContext = createContext<(SharedDataState & SharedDataActions) | undefined>(undefined);
@@ -168,6 +171,42 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }));
     };
 
+    const updateClientRequest = (projectId: string, requestId: string, updates: Partial<ClientRequest>) => {
+        setProjects(prev => prev.map(p => {
+            if (p.id === projectId && p.clientRequests) {
+                const updatedRequests = p.clientRequests.map(r =>
+                    r.id === requestId ? { ...r, ...updates } : r
+                );
+                return { ...p, clientRequests: updatedRequests };
+            }
+            return p;
+        }));
+    };
+
+    const deleteClientRequest = (projectId: string, requestId: string) => {
+        setProjects(prev => prev.map(p => {
+            if (p.id === projectId && p.clientRequests) {
+                const updatedRequests = p.clientRequests.filter(r => r.id !== requestId);
+                return { ...p, clientRequests: updatedRequests };
+            }
+            return p;
+        }));
+    };
+
+    const addTask = (projectId: string, task: Task) => {
+        // Update flattened tasks
+        setTasks(prev => [task, ...prev]);
+
+        // Update project tasks
+        setProjects(prev => prev.map(p => {
+            if (p.id === projectId) {
+                const updatedTasks = p.tasks ? [task, ...p.tasks] : [task];
+                return { ...p, tasks: updatedTasks };
+            }
+            return p;
+        }));
+    };
+
     return (
         <SharedDataContext.Provider value={{
             currentUser,
@@ -183,7 +222,9 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             addClientRequest,
             addDocument,
             updateDocument,
-            deleteDocument
+            deleteDocument,
+            updateClientRequest,
+            deleteClientRequest
         }}>
             {children}
         </SharedDataContext.Provider>

@@ -91,6 +91,15 @@ export interface ClientRequest {
   submittedAt: string;
   attachments?: number;
   taskId?: string; // Optional link to an existing task
+  rejectionReason?: string;
+  comments?: RequestComment[];
+}
+
+export interface RequestComment {
+  id: string;
+  author: User;
+  content: string;
+  createdAt: string;
 }
 
 export interface WorkLog {

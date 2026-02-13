@@ -1,26 +1,28 @@
 import React, { useState } from 'react';
-import { PROJECTS } from '../../constants';
+import { useSharedData } from '../../context/SharedDataContext';
 import { TaskProjectList } from './tasks/TaskProjectList';
 import { TaskBoard } from './tasks/TaskBoard';
 
 export const InternalTasks: React.FC = () => {
+  const { projects } = useSharedData();
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
-  const activeProject = PROJECTS.find(p => p.id === selectedProjectId);
+  // Derive active project from context data, ensuring reactivity
+  const activeProject = projects.find(p => p.id === selectedProjectId);
 
   if (activeProject) {
     return (
-      <TaskBoard 
-        project={activeProject} 
-        onBack={() => setSelectedProjectId(null)} 
+      <TaskBoard
+        project={activeProject}
+        onBack={() => setSelectedProjectId(null)}
       />
     );
   }
 
   return (
-    <TaskProjectList 
-      projects={PROJECTS} 
-      onSelectProject={setSelectedProjectId} 
+    <TaskProjectList
+      projects={projects}
+      onSelectProject={setSelectedProjectId}
     />
   );
 };

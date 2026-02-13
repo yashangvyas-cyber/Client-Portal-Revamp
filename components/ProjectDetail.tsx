@@ -3,6 +3,7 @@ import { Project, Task, TaskStatus, ViewMode, Priority, ProjectDocument } from '
 import { ArrowLeft, Plus, MoreHorizontal, Bot, CheckCircle2, Clock, Calendar, Eye, EyeOff, Ghost, Users, MessageCircle, FileText, Download, Trash2, X, Shield, Image, UploadCloud } from 'lucide-react';
 import { generateProjectSummary } from '../services/geminiService';
 import { useSharedData } from '../context/SharedDataContext';
+import { ProjectClientRequests } from './internal/projects/tabs/ProjectClientRequests';
 
 interface ProjectDetailProps {
   project: Project;
@@ -12,7 +13,7 @@ interface ProjectDetailProps {
 }
 
 export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project: projectProp, viewMode, onBack, onUpdateTask }) => {
-  const { addDocument, updateDocument, deleteDocument, currentUser, projects } = useSharedData();
+  const { addDocument, updateDocument, deleteDocument, currentUser, projects, addTask, updateClientRequest } = useSharedData();
 
 
   // CRITICAL FIX: Use useMemo to derive the fresh project from context
@@ -37,6 +38,49 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project: projectPr
   const [newDocLink, setNewDocLink] = useState('');
   const [newDocVisible, setNewDocVisible] = useState(true);
   const [newDocComments, setNewDocComments] = useState('');
+
+  // Task Creation State
+  const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskDesc, setNewTaskDesc] = useState('');
+  const [newTaskPriority, setNewTaskPriority] = useState<Priority>(Priority.MEDIUM);
+  const [linkedRequestId, setLinkedRequestId] = useState<string | null>(null);
+
+  const handleCreateTask = () => {
+    if (!newTaskTitle.trim()) {
+      alert("Task title is required");
+      return;
+    }
+
+    const newTask: Task = {
+      id: `task-${Date.now()}`,
+      title: newTaskTitle,
+      description: newTaskDesc,
+      status: TaskStatus.TODO,
+      priority: newTaskPriority,
+      isClientVisible: true,
+      timeLogs: { internal: 0, billable: 0 },
+      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 1 week later
+      team: [{ user: currentUser, isGhost: false }], // Auto-assign creator
+      projectId: project.id
+    };
+
+    addTask(project.id, newTask);
+
+    if (linkedRequestId) {
+      updateClientRequest(project.id, linkedRequestId, {
+        status: 'Converted to Task',
+        taskId: newTask.id
+      });
+      setLinkedRequestId(null);
+    }
+
+    setIsCreateTaskOpen(false);
+    setNewTaskTitle('');
+    setNewTaskDesc('');
+    setNewTaskPriority(Priority.MEDIUM);
+    alert("Task created successfully!");
+  };
 
   // Debug: Log when project changes
   React.useEffect(() => {
@@ -297,45 +341,15 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project: projectPr
 
       {/* --- CLIENT REQUESTS TAB --- */}
       {activeTab === 'requests' && (
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-          <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-            <h3 className="font-bold text-slate-800">Incoming Client Requests</h3>
-            <div className="text-xs text-slate-500">Requests submitted via Client Portal</div>
-          </div>
-          {clientRequests.length === 0 ? (
-            <div className="p-12 text-center text-slate-400">No requests found.</div>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {clientRequests.map(req => (
-                <div key={req.id} className="p-6 hover:bg-slate-50 transition-colors flex justify-between items-start group">
-                  <div className="flex gap-4">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${req.type === 'Bug' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
-                      {req.type === 'Bug' ? <div className="font-bold text-xs">BUG</div> : <div className="font-bold text-xs">FEAT</div>}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-3 mb-1">
-                        <h4 className="font-bold text-slate-800">{req.title}</h4>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${req.status === 'Pending' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>
-                          {req.status}
-                        </span>
-                      </div>
-                      <p className="text-sm text-slate-600 mb-2">{req.description}</p>
-                      <div className="flex items-center gap-4 text-xs text-slate-400">
-                        <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {req.submittedBy.name}</span>
-                        <span>{req.submittedAt}</span>
-                      </div>
-                    </div>
-                  </div>
-                  {req.status === 'Pending' && (
-                    <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold shadow-md hover:bg-indigo-700 transition-all opacity-0 group-hover:opacity-100">
-                      Convert to Task
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <ProjectClientRequests
+          project={project}
+          onRequestConvert={(req) => {
+            setNewTaskTitle(req.title);
+            setNewTaskDesc(req.description);
+            setLinkedRequestId(req.id);
+            setIsCreateTaskOpen(true);
+          }}
+        />
       )}
 
       {/* --- DOCUMENTS TAB --- */}
@@ -569,6 +583,82 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project: projectPr
           </div>
         )
       }
+      {/* --- CREATE TASK MODAL --- */}
+      {isCreateTaskOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-scale-in flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <div>
+                <h3 className="text-lg font-bold text-slate-800">
+                  {linkedRequestId ? 'Convert Request to Task' : 'Create New Task'}
+                </h3>
+                {linkedRequestId && <span className="text-xs text-indigo-600 font-semibold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">Linked to Request #{linkedRequestId}</span>}
+              </div>
+              <button onClick={() => setIsCreateTaskOpen(false)} className="p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 overflow-y-auto">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Task Title <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                  className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 font-bold text-slate-800"
+                  placeholder="e.g. Implement Login Page"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Description</label>
+                <textarea
+                  value={newTaskDesc}
+                  onChange={(e) => setNewTaskDesc(e.target.value)}
+                  className="w-full px-4 py-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 h-32 resize-none"
+                  placeholder="Add task details..."
+                ></textarea>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Priority</label>
+                  <select
+                    value={newTaskPriority}
+                    onChange={(e) => setNewTaskPriority(e.target.value as Priority)}
+                    className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400"
+                  >
+                    <option value={Priority.LOW}>Low</option>
+                    <option value={Priority.MEDIUM}>Medium</option>
+                    <option value={Priority.HIGH}>High</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Assignee</label>
+                  <div className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 flex items-center gap-2">
+                    <img src={currentUser.avatar} alt="Me" className="w-5 h-5 rounded-full" />
+                    <span>{currentUser.name} (Me)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
+              <button onClick={() => setIsCreateTaskOpen(false)} className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-sm font-bold hover:bg-slate-50 transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateTask}
+                className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 shadow-md shadow-indigo-200 transition-all flex items-center gap-2"
+              >
+                <CheckCircle2 className="w-4 h-4" /> Create Task
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div >
   );
 };

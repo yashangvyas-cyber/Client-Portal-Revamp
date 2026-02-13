@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Deal, Project, ProjectType, Invoice, TaskStatus, ClientRequest } from '../types';
+import { Deal, Project, ProjectType, Invoice, TaskStatus, ClientRequest, Priority } from '../types';
 import { Eye, ArrowUpRight, MessageSquare, Briefcase, Calendar, CheckCircle2, FileText, Clock, Users, DollarSign, ChevronRight, CheckSquare, PlusCircle, Check, X, AlertCircle, Paperclip, ChevronDown, PieChart, Shield, Image, Search, Download, Star as Start } from 'lucide-react';
 import { USERS } from '../constants';
 import { ClientTaskDetailView } from './client/ClientTaskDetailView';
@@ -350,19 +350,24 @@ import { useSharedData } from '../context/SharedDataContext';
 
 // ... (Inside ClientProjectDetail)
 export const ClientProjectDetail: React.FC<{ project: Project; deals: Deal[]; onMessageUser: (userId: string) => void }> = ({ project, deals, onMessageUser }) => {
-   const { addClientRequest, currentUser } = useSharedData();
+   const { addClientRequest, updateClientRequest, deleteClientRequest, currentUser } = useSharedData();
    const associatedDeal = deals.find(d => d.id === project.dealId);
    const [activeTab, setActiveTab] = useState<'dashboard' | 'team' | 'work_board' | 'utilization' | 'change_requests'>('dashboard');
    const [workBoardView, setWorkBoardView] = useState<'board' | 'list'>('board');
-   const [workBoardFilter, setWorkBoardFilter] = useState<'current_sprint' | 'backlog' | 'past_sprints'>('current_sprint');
+   const [workBoardFilter, setWorkBoardFilter] = useState<'none' | 'current_sprint' | 'backlog' | 'past_sprints'>('current_sprint');
 
    // Request Form State
    const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+   const [selectedRequest, setSelectedRequest] = useState<ClientRequest | null>(null);
    const [newReqTitle, setNewReqTitle] = useState('');
    const [newReqDesc, setNewReqDesc] = useState('');
    const [newReqType, setNewReqType] = useState<'Bug' | 'Feature'>('Bug');
    const [newReqPriority, setNewReqPriority] = useState<'Low' | 'Medium' | 'High'>('Medium');
    const [newReqTaskId, setNewReqTaskId] = useState<string>(''); // For Bug Reports to link to a task
+
+   // Derived Mode
+   const isEditMode = !!selectedRequest && selectedRequest.status === 'Pending';
+   const isViewMode = !!selectedRequest && selectedRequest.status !== 'Pending';
 
    // State for Kanban Tasks (Local override for prototype interactivity)
    const [tasks, setTasks] = useState(project.tasks || []);
@@ -373,29 +378,64 @@ export const ClientProjectDetail: React.FC<{ project: Project; deals: Deal[]; on
       setTasks(project.tasks || []);
    }, [project.tasks]);
 
+   // Reset or Populate Form
+   useEffect(() => {
+      if (isRequestModalOpen && selectedRequest) {
+         setNewReqTitle(selectedRequest.title);
+         setNewReqDesc(selectedRequest.description);
+         setNewReqType(selectedRequest.type as any);
+         setNewReqPriority(selectedRequest.priority as any);
+         setNewReqTaskId(selectedRequest.taskId || '');
+      } else if (isRequestModalOpen && !selectedRequest) {
+         setNewReqTitle('');
+         setNewReqDesc('');
+         setNewReqType('Bug');
+         setNewReqPriority('Medium');
+         setNewReqTaskId('');
+      }
+   }, [isRequestModalOpen, selectedRequest]);
+
    const handleSubmitRequest = () => {
       if (!newReqTitle.trim() || !newReqDesc.trim()) return;
 
-      const newRequest: ClientRequest = {
-         id: `cr-${Date.now()} `,
-         title: newReqTitle,
-         description: newReqDesc,
-         type: newReqType,
-         status: 'Pending',
-         priority: newReqPriority,
-         submittedBy: currentUser, // Use real current user
-         submittedAt: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-         taskId: newReqType === 'Bug' ? newReqTaskId : undefined
-      };
+      if (selectedRequest && isEditMode) {
+         // Update Existing
+         updateClientRequest(project.id, selectedRequest.id, {
+            title: newReqTitle,
+            description: newReqDesc,
+            type: newReqType,
+            priority: newReqPriority,
+            taskId: newReqType === 'Bug' ? newReqTaskId : undefined
+         });
+      } else {
+         // Create New
+         const newRequest: ClientRequest = {
+            id: `cr-${Date.now()} `,
+            title: newReqTitle,
+            description: newReqDesc,
+            type: newReqType,
+            status: 'Pending',
+            priority: newReqPriority,
+            submittedBy: currentUser,
+            submittedAt: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+            taskId: newReqType === 'Bug' ? newReqTaskId : undefined
+         };
+         addClientRequest(project.id, newRequest);
+      }
 
-      // Call context action
-      addClientRequest(project.id, newRequest);
+      closeRequestModal();
+   };
 
-      // Reset & Close
-      setNewReqTitle('');
-      setNewReqDesc('');
-      setNewReqTaskId('');
+   const handleDeleteRequest = (requestId: string) => {
+      if (window.confirm("Are you sure you want to delete this request?")) {
+         deleteClientRequest(project.id, requestId);
+         if (selectedRequest?.id === requestId) closeRequestModal();
+      }
+   };
+
+   const closeRequestModal = () => {
       setIsRequestModalOpen(false);
+      setTimeout(() => setSelectedRequest(null), 300); // Clear after animation
    };
 
    // --- Kanban Logic ---
@@ -404,8 +444,6 @@ export const ClientProjectDetail: React.FC<{ project: Project; deals: Deal[]; on
    };
 
    const handleRejectTask = (taskId: string) => {
-      // In the modal version, the logic is inside the modal or handled here. 
-      // For simplicity, we just revert status.
       setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: TaskStatus.IN_PROGRESS } : t));
    };
 
@@ -431,18 +469,42 @@ export const ClientProjectDetail: React.FC<{ project: Project; deals: Deal[]; on
             />
          )}
 
-         {/* Modal for New Request */}
+         {/* Modal for Request (Create / Edit / View) */}
          {isRequestModalOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-scale-in flex flex-col max-h-[90vh]">
                   <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-                     <h3 className="text-lg font-bold text-slate-800">Submit Request / Report Issue</h3>
-                     <button onClick={() => setIsRequestModalOpen(false)} className="p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+                     <div>
+                        <h3 className="text-lg font-bold text-slate-800">
+                           {isViewMode ? 'Request Details' : isEditMode ? 'Edit Request' : 'New Request'}
+                        </h3>
+                        {isViewMode && <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${selectedRequest?.status === 'Rejected' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>{selectedRequest?.status}</span>}
+                     </div>
+                     <button onClick={closeRequestModal} className="p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
                         <X className="w-5 h-5" />
                      </button>
                   </div>
 
                   <div className="p-6 space-y-5 overflow-y-auto">
+
+                     {/* Rejection / Status Info */}
+                     {isViewMode && selectedRequest?.status === 'Rejected' && (
+                        <div className="bg-red-50 border border-red-100 rounded-xl p-4 mb-2">
+                           <h4 className="text-red-800 font-bold text-sm mb-1">Request Rejected</h4>
+                           <p className="text-red-600 text-xs">This request was rejected by the project manager.</p>
+                        </div>
+                     )}
+
+                     {isViewMode && selectedRequest?.status === 'Converted to Task' && (
+                        <div className="bg-emerald-50 border-emerald-100 rounded-xl p-4 mb-2 flex justify-between items-center">
+                           <div>
+                              <h4 className="text-emerald-800 font-bold text-sm mb-1">Converted to Task</h4>
+                              <p className="text-emerald-600 text-xs">This request has been approved and moved to the backlog.</p>
+                           </div>
+                           <button className="text-xs bg-white border border-emerald-200 text-emerald-700 px-3 py-1.5 rounded-lg font-bold shadow-sm hover:bg-emerald-50">View Task</button>
+                        </div>
+                     )}
+
                      <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Project</label>
                         <input
@@ -459,8 +521,9 @@ export const ClientProjectDetail: React.FC<{ project: Project; deals: Deal[]; on
                            {['Bug', 'Feature', 'Other'].map(type => (
                               <button
                                  key={type}
-                                 onClick={() => setNewReqType(type as any)}
-                                 className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-all ${newReqType === type ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'} `}
+                                 onClick={() => !isViewMode && setNewReqType(type as any)}
+                                 disabled={isViewMode}
+                                 className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-all ${newReqType === type ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-600'} ${!isViewMode && newReqType !== type ? 'hover:bg-slate-50' : ''} `}
                               >
                                  {type === 'Bug' ? 'Bug Report' : type === 'Feature' ? 'Feature Request' : 'Other'}
                               </button>
@@ -474,7 +537,8 @@ export const ClientProjectDetail: React.FC<{ project: Project; deals: Deal[]; on
                            type="text"
                            value={newReqTitle}
                            onChange={(e) => setNewReqTitle(e.target.value)}
-                           className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-all"
+                           disabled={isViewMode}
+                           className={`w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-all ${isViewMode ? 'bg-slate-50 text-slate-500 cursor-default' : ''}`}
                            placeholder="Briefly describe the issue or request"
                         />
                      </div>
@@ -484,7 +548,8 @@ export const ClientProjectDetail: React.FC<{ project: Project; deals: Deal[]; on
                         <textarea
                            value={newReqDesc}
                            onChange={(e) => setNewReqDesc(e.target.value)}
-                           className="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-all h-32 resize-none"
+                           disabled={isViewMode}
+                           className={`w-full px-4 py-3 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-all h-32 resize-none ${isViewMode ? 'bg-slate-50 text-slate-500 cursor-default' : ''}`}
                            placeholder="Please provide details..."
                         ></textarea>
                      </div>
@@ -495,13 +560,14 @@ export const ClientProjectDetail: React.FC<{ project: Project; deals: Deal[]; on
                            <select
                               value={newReqPriority}
                               onChange={(e) => setNewReqPriority(e.target.value as any)}
-                              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 appearance-none cursor-pointer"
+                              disabled={isViewMode}
+                              className={`w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 appearance-none ${isViewMode ? 'bg-slate-50 text-slate-500 cursor-default' : 'cursor-pointer'}`}
                            >
                               <option>Low</option>
                               <option>Medium</option>
                               <option>High</option>
                            </select>
-                           <ChevronDown className="absolute right-3 top-3 w-4 h-4 text-slate-400 pointer-events-none" />
+                           {!isViewMode && <ChevronDown className="absolute right-3 top-3 w-4 h-4 text-slate-400 pointer-events-none" />}
                         </div>
                      </div>
 
@@ -514,9 +580,10 @@ export const ClientProjectDetail: React.FC<{ project: Project; deals: Deal[]; on
                            </label>
                            <div className="relative">
                               <select
-                                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 appearance-none cursor-pointer"
+                                 className={`w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 appearance-none ${isViewMode ? 'bg-slate-50 text-slate-500 cursor-default' : 'cursor-pointer'}`}
                                  value={newReqTaskId}
                                  onChange={(e) => setNewReqTaskId(e.target.value)}
+                                 disabled={isViewMode}
                               >
                                  <option value="">-- Select a Task --</option>
                                  {tasks.map(t => (
@@ -525,34 +592,46 @@ export const ClientProjectDetail: React.FC<{ project: Project; deals: Deal[]; on
                                     </option>
                                  ))}
                               </select>
-                              <ChevronDown className="absolute right-3 top-3 w-4 h-4 text-slate-400 pointer-events-none" />
+                              {!isViewMode && <ChevronDown className="absolute right-3 top-3 w-4 h-4 text-slate-400 pointer-events-none" />}
                            </div>
                         </div>
                      )}
 
                      <div>
-                        <div className="w-full h-24 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50 flex flex-col items-center justify-center text-slate-400 gap-2 cursor-pointer hover:bg-slate-50 hover:border-indigo-200 transition-colors">
+                        <div className={`w-full h-24 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50 flex flex-col items-center justify-center text-slate-400 gap-2 transition-colors ${!isViewMode ? 'cursor-pointer hover:bg-slate-50 hover:border-indigo-200' : ''}`}>
                            <Paperclip className="w-6 h-6 text-slate-300" />
-                           <span className="text-xs font-medium">Attach screenshots or documents</span>
+                           <span className="text-xs font-medium">{isViewMode ? 'No attachments' : 'Attach screenshots or documents'}</span>
                         </div>
                      </div>
                   </div>
 
-                  <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3 shrink-0">
-                     <button
-                        onClick={() => setIsRequestModalOpen(false)}
-                        className="px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-sm font-bold hover:bg-slate-50 transition-colors"
-                     >
-                        Cancel
-                     </button>
-                     <button
-                        onClick={handleSubmitRequest}
-                        disabled={!newReqTitle || !newReqDesc}
-                        className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 shadow-md shadow-indigo-200 transition-all disabled:opacity-50 disabled:shadow-none"
-                     >
-                        Submit Request
-                     </button>
-                  </div>
+                  {/* Footer Actions */}
+                  {!isViewMode ? (
+                     <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3 shrink-0">
+                        <button
+                           onClick={closeRequestModal}
+                           className="px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-sm font-bold hover:bg-slate-50 transition-colors"
+                        >
+                           Cancel
+                        </button>
+                        <button
+                           onClick={handleSubmitRequest}
+                           disabled={!newReqTitle || !newReqDesc}
+                           className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 shadow-md shadow-indigo-200 transition-all disabled:opacity-50 disabled:shadow-none"
+                        >
+                           {isEditMode ? 'Update Request' : 'Submit Request'}
+                        </button>
+                     </div>
+                  ) : (
+                     <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end shrink-0">
+                        <button
+                           onClick={closeRequestModal}
+                           className="px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-sm font-bold hover:bg-slate-50 transition-colors"
+                        >
+                           Close
+                        </button>
+                     </div>
+                  )}
                </div>
             </div>
          )}
@@ -648,6 +727,7 @@ export const ClientProjectDetail: React.FC<{ project: Project; deals: Deal[]; on
                         onChange={(e) => setWorkBoardFilter(e.target.value as any)}
                         className="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                      >
+                        <option value="none">None</option>
                         <option value="current_sprint">Current Sprint</option>
                         <option value="backlog">Backlog</option>
                         <option value="past_sprints">Past Sprints</option>
@@ -739,14 +819,94 @@ export const ClientProjectDetail: React.FC<{ project: Project; deals: Deal[]; on
                )}
 
                {workBoardView === 'list' && (
-                  <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex items-center justify-center p-20">
-                     <div className="text-center">
-                        <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                           <PlusCircle className="w-8 h-8 text-slate-300" />
-                        </div>
-                        <h3 className="text-slate-900 font-bold mb-1">Issue List View</h3>
-                        <p className="text-slate-500 text-sm">Table view listing all issues in a flat list.</p>
-                     </div>
+                  <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                     <table className="w-full">
+                        <thead className="bg-slate-50 border-b border-slate-200">
+                           <tr>
+                              <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">ID</th>
+                              <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Title</th>
+                              <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Status</th>
+                              <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Priority</th>
+                              <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Team</th>
+                              <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Due Date</th>
+                              <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Actions</th>
+                           </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                           {tasks.filter(t => t.isClientVisible).length > 0 ? (
+                              tasks.filter(t => t.isClientVisible).map((task) => (
+                                 <tr key={task.id} className="hover:bg-slate-50 transition-colors">
+                                    <td className="px-4 py-3">
+                                       <div className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded border border-indigo-100 inline-block">
+                                          {task.id}
+                                       </div>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                       <div className="text-sm font-medium text-slate-800">{task.title}</div>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${task.status === TaskStatus.TODO ? 'bg-blue-100 text-blue-700 border border-blue-200' :
+                                          task.status === TaskStatus.IN_PROGRESS ? 'bg-orange-100 text-orange-700 border border-orange-200' :
+                                             task.status === TaskStatus.REVIEW ? 'bg-purple-100 text-purple-700 border border-purple-200' :
+                                                'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                                          }`}>
+                                          {task.status === TaskStatus.TODO ? 'Up Next' :
+                                             task.status === TaskStatus.IN_PROGRESS ? 'In Progress' :
+                                                task.status === TaskStatus.REVIEW ? 'Ready for Review' :
+                                                   'Completed'}
+                                       </span>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                       <div className="flex items-center gap-1.5">
+                                          <div className={`w-2 h-2 rounded-full ${task.priority === Priority.HIGH ? 'bg-red-500' :
+                                             task.priority === Priority.MEDIUM ? 'bg-yellow-500' :
+                                                'bg-blue-500'
+                                             }`}></div>
+                                          <span className="text-xs font-medium text-slate-600">
+                                             {task.priority === Priority.HIGH ? 'High' :
+                                                task.priority === Priority.MEDIUM ? 'Medium' :
+                                                   'Low'}
+                                          </span>
+                                       </div>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                       <div className="flex -space-x-1">
+                                          {task.team?.filter(m => !m.isGhost).map((member, i) => (
+                                             <div
+                                                key={i}
+                                                className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-[10px] font-bold border-2 border-white shadow-sm"
+                                                title={member.user.name}
+                                             >
+                                                {member.user.name.substring(0, 2).toUpperCase()}
+                                             </div>
+                                          ))}
+                                          {(!task.team || task.team.filter(m => !m.isGhost).length === 0) && (
+                                             <span className="text-xs text-slate-400">Unassigned</span>
+                                          )}
+                                       </div>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                       <span className="text-xs text-slate-600">{task.dueDate || 'No due date'}</span>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                       <button
+                                          onClick={() => setSelectedTaskForDetail(task.id)}
+                                          className="text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
+                                       >
+                                          View
+                                       </button>
+                                    </td>
+                                 </tr>
+                              ))
+                           ) : (
+                              <tr>
+                                 <td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-400">
+                                    No tasks found
+                                 </td>
+                              </tr>
+                           )}
+                        </tbody>
+                     </table>
                   </div>
                )}
             </div>
@@ -851,25 +1011,49 @@ export const ClientProjectDetail: React.FC<{ project: Project; deals: Deal[]; on
                   {project.clientRequests && project.clientRequests.length > 0 ? (
                      <div className="divide-y divide-slate-100">
                         {project.clientRequests.map(req => (
-                           <div key={req.id} className="p-6 flex gap-4 hover:bg-slate-50 transition-colors group relative">
+                           <div
+                              key={req.id}
+                              onClick={() => { setSelectedRequest(req); setIsRequestModalOpen(true); }}
+                              className="p-6 flex gap-4 hover:bg-slate-50 transition-colors group relative cursor-pointer"
+                           >
                               <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${req.type === 'Bug' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'} `}>
                                  {req.type === 'Bug' ? <AlertCircle className="w-6 h-6" /> : <CheckSquare className="w-6 h-6" />}
                               </div>
                               <div className="flex-1">
                                  <div className="flex items-center gap-3 mb-1.5">
-                                    <h4 className="font-bold text-slate-800 text-lg">{req.title}</h4>
+                                    <h4 className="font-bold text-slate-800 text-lg group-hover:text-indigo-600 transition-colors">{req.title}</h4>
                                     <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase ${req.status === 'Converted to Task' ? 'bg-emerald-100 text-emerald-700' : req.status === 'Rejected' ? 'bg-slate-100 text-slate-500' : 'bg-amber-100 text-amber-700'} `}>
                                        {req.status}
                                     </span>
                                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wide border border-slate-200 px-2 py-0.5 rounded-full">{req.priority} Priority</span>
                                  </div>
-                                 <p className="text-sm text-slate-600 mb-3 leading-relaxed">{req.description}</p>
+                                 <p className="text-sm text-slate-600 mb-3 leading-relaxed line-clamp-2">{req.description}</p>
                                  <div className="flex items-center gap-4 text-xs text-slate-400">
                                     <span>Ref ID: <span className="font-mono text-slate-500">{req.id}</span></span>
                                     <span>Submitted: {req.submittedAt}</span>
                                  </div>
                               </div>
-                              <div className="absolute right-6 top-6 opacity-0 group-hover:opacity-100 transition-opacity">
+
+                              {/* Actions */}
+                              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                 {req.status === 'Pending' && (
+                                    <>
+                                       <button
+                                          onClick={(e) => { e.stopPropagation(); setSelectedRequest(req); setIsRequestModalOpen(true); }}
+                                          title="Edit Request"
+                                          className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                       >
+                                          <div className="w-5 h-5 flex items-center justify-center"><Briefcase className="w-4 h-4" /></div> {/* Hack for Pencil icon missing import, using Briefcase temporarily or add import */}
+                                       </button>
+                                       <button
+                                          onClick={(e) => { e.stopPropagation(); handleDeleteRequest(req.id); }}
+                                          title="Delete Request"
+                                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                       >
+                                          <X className="w-5 h-5" />
+                                       </button>
+                                    </>
+                                 )}
                                  <button className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all">
                                     <ArrowUpRight className="w-5 h-5" />
                                  </button>
