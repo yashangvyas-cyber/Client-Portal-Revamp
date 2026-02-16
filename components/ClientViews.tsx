@@ -518,14 +518,14 @@ export const ClientProjectDetail: React.FC<{ project: Project; deals: Deal[]; on
                      <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Request Type</label>
                         <div className="flex gap-2">
-                           {['Bug', 'Feature', 'Other'].map(type => (
+                           {['Bug', 'Feature', 'Feedback'].map(type => (
                               <button
                                  key={type}
                                  onClick={() => !isViewMode && setNewReqType(type as any)}
                                  disabled={isViewMode}
                                  className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-all ${newReqType === type ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-600'} ${!isViewMode && newReqType !== type ? 'hover:bg-slate-50' : ''} `}
                               >
-                                 {type === 'Bug' ? 'Bug Report' : type === 'Feature' ? 'Feature Request' : 'Other'}
+                                 {type === 'Bug' ? 'Bug Report' : type === 'Feature' ? 'Feature Request' : 'Feedback / Suggestion'}
                               </button>
                            ))}
                         </div>
@@ -1022,7 +1022,18 @@ export const ClientProjectDetail: React.FC<{ project: Project; deals: Deal[]; on
                               <div className="flex-1">
                                  <div className="flex items-center gap-3 mb-1.5">
                                     <h4 className="font-bold text-slate-800 text-lg group-hover:text-indigo-600 transition-colors">{req.title}</h4>
-                                    <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase ${req.status === 'Converted to Task' ? 'bg-emerald-100 text-emerald-700' : req.status === 'Rejected' ? 'bg-slate-100 text-slate-500' : 'bg-amber-100 text-amber-700'} `}>
+                                    <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase ${req.status === 'Pending' ? 'bg-amber-100 text-amber-700' :
+                                       req.status === 'Converted to Task' ? 'bg-emerald-100 text-emerald-700' :
+                                          req.status === 'Rejected' ? 'bg-slate-100 text-slate-500' :
+                                             req.status === 'Acknowledged' ? 'bg-blue-100 text-blue-700' :
+                                                req.status === 'Under Consideration' ? 'bg-purple-100 text-purple-700' :
+                                                   req.status === 'Implemented' ? 'bg-green-100 text-green-700' :
+                                                      req.status === 'Not Planned' ? 'bg-gray-100 text-gray-600' :
+                                                         req.status === 'Resolved' ? 'bg-teal-100 text-teal-700' :
+                                                            req.status === 'Duplicate' ? 'bg-orange-100 text-orange-700' :
+                                                               req.status === 'Cannot Reproduce' ? 'bg-yellow-100 text-yellow-700' :
+                                                                  'bg-slate-100 text-slate-600'
+                                       }`}>
                                        {req.status}
                                     </span>
                                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wide border border-slate-200 px-2 py-0.5 rounded-full">{req.priority} Priority</span>
@@ -1076,3 +1087,4 @@ export const ClientProjectDetail: React.FC<{ project: Project; deals: Deal[]; on
       </div>
    );
 };
+

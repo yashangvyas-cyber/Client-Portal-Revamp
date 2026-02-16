@@ -5,68 +5,68 @@ import { WorkLog } from '../../../types';
 import { USERS } from '../../../constants';
 
 interface TimesheetLogModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  date: string;
-  title: string; // Resource Name or Task Title
-  logs: WorkLog[];
-  onUpdateLog: (logId: string, updates: Partial<WorkLog>) => void;
+    isOpen: boolean;
+    onClose: () => void;
+    date: string;
+    title: string; // Resource Name or Task Title
+    logs: WorkLog[];
+    onUpdateLog: (logId: string, updates: Partial<WorkLog>) => void;
 }
 
 export const TimesheetLogModal: React.FC<TimesheetLogModalProps> = ({ isOpen, onClose, date, title, logs, onUpdateLog }) => {
-  if (!isOpen) return null;
+    if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden animate-scale-in flex flex-col max-h-[85vh]">
-        
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-white shrink-0">
-          <div>
-             <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                Log Review
-                <span className="text-slate-300">|</span>
-                <span className="text-indigo-600">{date}</span>
-             </h2>
-             <p className="text-xs text-slate-500 font-medium mt-1">Reviewing logs for: <span className="text-slate-700 font-bold">{title}</span></p>
-          </div>
-          <button onClick={onClose} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    return (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden animate-scale-in flex flex-col max-h-[85vh]">
 
-        {/* List of Logs */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/50">
-           {logs.length === 0 ? (
-               <div className="text-center py-10 text-slate-400 italic">No logs found for this selection.</div>
-           ) : (
-               logs.map(log => (
-                   <LogItem 
-                      key={log.id} 
-                      log={log} 
-                      onUpdate={(updates) => onUpdateLog(log.id, updates)} 
-                   />
-               ))
-           )}
-        </div>
+                {/* Header */}
+                <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-white shrink-0">
+                    <div>
+                        <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            Log Review
+                            <span className="text-slate-300">|</span>
+                            <span className="text-indigo-600">{date}</span>
+                        </h2>
+                        <p className="text-xs text-slate-500 font-medium mt-1">Reviewing logs for: <span className="text-slate-700 font-bold">{title}</span></p>
+                    </div>
+                    <button onClick={onClose} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 bg-white border-t border-slate-200 flex justify-between items-center">
-            <div className="text-xs text-slate-400 flex items-center gap-2">
-                <Lock className="w-3 h-3" />
-                <span>Override controls visible only to Managers.</span>
+                {/* List of Logs */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/50">
+                    {logs.length === 0 ? (
+                        <div className="text-center py-10 text-slate-400 italic">No logs found for this selection.</div>
+                    ) : (
+                        logs.map(log => (
+                            <LogItem
+                                key={log.id}
+                                log={log}
+                                onUpdate={(updates) => onUpdateLog(log.id, updates)}
+                            />
+                        ))
+                    )}
+                </div>
+
+                {/* Footer */}
+                <div className="px-6 py-4 bg-white border-t border-slate-200 flex justify-between items-center">
+                    <div className="text-xs text-slate-400 flex items-center gap-2">
+                        <Lock className="w-3 h-3" />
+                        <span>Override controls visible only to Managers.</span>
+                    </div>
+                    <button onClick={onClose} className="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 shadow-md transition-all">
+                        Done
+                    </button>
+                </div>
             </div>
-            <button onClick={onClose} className="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 shadow-md transition-all">
-                Done
-            </button>
         </div>
-      </div>
-    </div>
-  );
+    );
 };
 
-const LogItem: React.FC<{ 
-    log: WorkLog; 
+const LogItem: React.FC<{
+    log: WorkLog;
     onUpdate: (updates: Partial<WorkLog>) => void;
 }> = ({ log, onUpdate }) => {
     // Determines the current billed hours (defaults to actual hours if undefined)
@@ -94,13 +94,13 @@ const LogItem: React.FC<{
                 <div className="flex items-center gap-4">
                     <div className="relative">
                         <div className={`w-10 h-10 rounded-full border flex items-center justify-center text-sm font-bold ${!log.isClientVisible ? 'bg-slate-200 text-slate-500 border-slate-300' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
-                           {log.userAvatar || log.userName.substring(0,2)}
+                            {log.userAvatar || log.userName.substring(0, 2)}
                         </div>
                         {/* Ghost Indicator */}
                         {log.userName.includes('Shadow') && (
-                           <div className="absolute -bottom-1 -right-1 bg-slate-800 text-white p-[2px] rounded-full border border-white" title="Ghost Resource">
-                               <Ghost className="w-3 h-3" />
-                           </div>
+                            <div className="absolute -bottom-1 -right-1 bg-slate-800 text-white p-[2px] rounded-full border border-white" title="Ghost Resource">
+                                <Ghost className="w-3 h-3" />
+                            </div>
                         )}
                     </div>
                     <div>
@@ -108,29 +108,29 @@ const LogItem: React.FC<{
                         <div className="text-xs text-slate-500">{log.taskTitle}</div>
                     </div>
                 </div>
-                
+
                 <div className="flex items-center gap-4">
                     {/* Hours Control Section */}
                     <div className="flex flex-col items-end gap-1">
                         <div className="flex items-center gap-2">
-                             <div className="text-[10px] uppercase font-bold text-slate-400">Actual:</div>
-                             <div className="text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">{log.hours.toFixed(2)}h</div>
+                            <div className="text-[10px] uppercase font-bold text-slate-400">Actual:</div>
+                            <div className="text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">{log.hours.toFixed(2)}h</div>
                         </div>
-                        
+
                         {/* Only show Billed Hours if Client Visible */}
                         {log.isClientVisible ? (
                             <div className="flex items-center gap-2">
                                 <div className="text-[10px] uppercase font-bold text-indigo-600">Billed:</div>
                                 <div className="relative group/input">
-                                    <input 
-                                        type="number" 
+                                    <input
+                                        type="number"
                                         className={`w-16 px-2 py-0.5 text-right text-xs font-bold border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all ${isHoursModified ? 'border-amber-400 bg-amber-50 text-amber-700' : 'border-slate-300 text-slate-800'}`}
                                         value={currentBilledHours}
                                         onChange={(e) => handleBilledHoursChange(e.target.value)}
                                         step="0.25"
                                     />
                                     {isHoursModified && (
-                                        <button 
+                                        <button
                                             onClick={resetBilledHours}
                                             className="absolute -right-6 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600"
                                             title="Reset to Actual Hours"
@@ -150,7 +150,7 @@ const LogItem: React.FC<{
 
                     <div className="w-[1px] h-8 bg-slate-200 mx-2"></div>
 
-                    <button 
+                    <button
                         onClick={toggleVisibility}
                         className={`p-2 rounded-lg border transition-all flex flex-col items-center gap-1 min-w-[60px] ${log.isClientVisible ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100' : 'bg-slate-100 text-slate-400 border-slate-200 hover:bg-slate-200'}`}
                         title={log.isClientVisible ? "Visible to Client" : "Internal Only"}
@@ -158,6 +158,32 @@ const LogItem: React.FC<{
                         {log.isClientVisible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                         <span className="text-[9px] font-bold uppercase">{log.isClientVisible ? 'Public' : 'Hidden'}</span>
                     </button>
+
+                    {/* Approval Button */}
+                    {log.isClientVisible && !log.isBilled && (
+                        <>
+                            <div className="w-[1px] h-8 bg-slate-200 mx-2"></div>
+                            <button
+                                onClick={() => onUpdate({ isBilled: true })}
+                                className="px-3 py-2 rounded-lg border-2 border-amber-500 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-all flex items-center gap-2 font-bold text-xs"
+                                title="Approve and finalize this entry for client billing"
+                            >
+                                <Save className="w-4 h-4" />
+                                Approve & Finalize
+                            </button>
+                        </>
+                    )}
+
+                    {/* Approved Status */}
+                    {log.isClientVisible && log.isBilled && (
+                        <>
+                            <div className="w-[1px] h-8 bg-slate-200 mx-2"></div>
+                            <div className="px-3 py-2 rounded-lg border-2 border-green-500 bg-green-50 text-green-700 flex items-center gap-2 font-bold text-xs">
+                                <Save className="w-4 h-4" />
+                                Approved
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
 

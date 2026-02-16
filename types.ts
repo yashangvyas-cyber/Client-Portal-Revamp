@@ -86,7 +86,9 @@ export interface ClientRequest {
   description: string;
   type: 'Bug' | 'Feature' | 'Feedback';
   priority?: 'Low' | 'Medium' | 'High' | 'Critical';
-  status: 'Pending' | 'Reviewing' | 'Converted to Task' | 'Rejected';
+  status: 'Pending' | 'Reviewing' | 'Converted to Task' | 'Rejected' |
+  'Acknowledged' | 'Under Consideration' | 'Implemented' | 'Not Planned' |
+  'Resolved' | 'Duplicate' | 'Cannot Reproduce';
   submittedBy: User;
   submittedAt: string;
   attachments?: number;
@@ -114,6 +116,7 @@ export interface WorkLog {
   billedHours?: number; // Revised hours shown to client (Manager Override)
   description: string;
   isClientVisible: boolean;
+  isBilled?: boolean; // Whether the entry has been approved/finalized for client billing
   billedAs?: {
     userId: string;
     userName: string;

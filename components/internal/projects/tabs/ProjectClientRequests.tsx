@@ -14,10 +14,39 @@ export const ProjectClientRequests: React.FC<ProjectClientRequestsProps> = ({ pr
     const requests = project.clientRequests || [];
     const [selectedRequest, setSelectedRequest] = useState<ClientRequest | null>(null);
 
+    // Helper function for status badge styling
+    const getStatusStyle = (status: string) => {
+        switch (status) {
+            case 'Pending': return 'bg-amber-50 text-amber-700 border-amber-200';
+            case 'Converted to Task': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+            case 'Rejected': return 'bg-slate-100 text-slate-500 border-slate-200';
+            case 'Acknowledged': return 'bg-blue-50 text-blue-700 border-blue-200';
+            case 'Under Consideration': return 'bg-purple-50 text-purple-700 border-purple-200';
+            case 'Implemented': return 'bg-green-50 text-green-700 border-green-200';
+            case 'Not Planned': return 'bg-gray-100 text-gray-600 border-gray-200';
+            case 'Resolved': return 'bg-teal-50 text-teal-700 border-teal-200';
+            case 'Duplicate': return 'bg-orange-50 text-orange-700 border-orange-200';
+            case 'Cannot Reproduce': return 'bg-yellow-50 text-yellow-700 border-yellow-200';
+            default: return 'bg-slate-50 text-slate-600 border-slate-200';
+        }
+    };
+
     // Triage State
     const [rejectionReason, setRejectionReason] = useState('');
     const [isRejecting, setIsRejecting] = useState(false);
     const [newComment, setNewComment] = useState('');
+    const [selectedNewStatus, setSelectedNewStatus] = useState<ClientRequest['status'] | ''>('');
+
+    // Get status options based on request type
+    const getStatusOptions = (type: ClientRequest['type']): ClientRequest['status'][] => {
+        if (type === 'Bug') {
+            return ['Resolved', 'Converted to Task', 'Duplicate', 'Cannot Reproduce', 'Rejected'];
+        } else if (type === 'Feature') {
+            return ['Converted to Task', 'Under Consideration', 'Rejected'];
+        } else { // Feedback
+            return ['Acknowledged', 'Under Consideration', 'Implemented', 'Not Planned'];
+        }
+    };
 
     const handleStatusChange = (reqId: string, newStatus: ClientRequest['status'], reason?: string) => {
         updateClientRequest(project.id, reqId, {
@@ -26,9 +55,23 @@ export const ProjectClientRequests: React.FC<ProjectClientRequestsProps> = ({ pr
         });
     };
 
+    const handleStatusUpdate = () => {
+        if (!selectedRequest || !selectedNewStatus) return;
+
+        // Special handling for "Converted to Task"
+        if (selectedNewStatus === 'Converted to Task') {
+            handleConvertClick(selectedRequest);
+        } else {
+            handleStatusChange(selectedRequest.id, selectedNewStatus);
+            setSelectedRequest(null);
+            setSelectedNewStatus('');
+        }
+    };
+
     const handleConvertClick = (req: ClientRequest) => {
         // Close triage modal
         setSelectedRequest(null);
+        setSelectedNewStatus('');
         // Change status to converted
         handleStatusChange(req.id, 'Converted to Task');
         // Trigger parent handler to open create issue modal
@@ -114,6 +157,32 @@ export const ProjectClientRequests: React.FC<ProjectClientRequestsProps> = ({ pr
                                             {selectedRequest.description}
                                         </div>
                                     </div>
+
+                                    {/* Related Task Section - Only for Bug Reports */}
+                                    {selectedRequest.type === 'Bug' && selectedRequest.taskId && (() => {
+                                        const relatedTask = project.tasks?.find(t => t.id === selectedRequest.taskId);
+                                        return (
+                                            <div>
+                                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">
+                                                    Related Task
+                                                </label>
+                                                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-center gap-3 hover:bg-blue-100 transition-colors cursor-pointer">
+                                                    <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
+                                                        <CheckSquare className="w-4 h-4" />
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <div className="text-xs font-mono text-blue-600 mb-0.5">
+                                                            {selectedRequest.taskId}
+                                                        </div>
+                                                        <div className="text-sm font-bold text-slate-800">
+                                                            {relatedTask ? relatedTask.title : 'Task not found'}
+                                                        </div>
+                                                    </div>
+                                                    <ExternalLink className="w-4 h-4 text-blue-600" />
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
 
                                     {selectedRequest.rejectionReason && (
                                         <div className="bg-red-50 border border-red-100 rounded-xl p-4">
@@ -203,11 +272,7 @@ export const ProjectClientRequests: React.FC<ProjectClientRequestsProps> = ({ pr
                         <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center shrink-0">
                             <div className="flex items-center gap-2">
                                 <span className="text-xs font-bold text-slate-500">Current Status:</span>
-                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${selectedRequest.status === 'Pending' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                                    selectedRequest.status === 'Converted to Task' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                        selectedRequest.status === 'Rejected' ? 'bg-slate-100 text-slate-500 border-slate-200' :
-                                            'bg-blue-50 text-blue-700 border-blue-200'
-                                    }`}>
+                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${getStatusStyle(selectedRequest.status)}`}>
                                     {selectedRequest.status}
                                 </span>
                             </div>
@@ -216,25 +281,44 @@ export const ProjectClientRequests: React.FC<ProjectClientRequestsProps> = ({ pr
                                 {!isRejecting ? (
                                     <>
                                         {selectedRequest.status === 'Pending' && (
-                                            <>
+                                            <div className="flex items-center gap-3 flex-1">
+                                                <div className="flex-1">
+                                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Update Status</label>
+                                                    <select
+                                                        value={selectedNewStatus}
+                                                        onChange={(e) => setSelectedNewStatus(e.target.value as ClientRequest['status'])}
+                                                        className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-all"
+                                                    >
+                                                        <option value="">Select new status...</option>
+                                                        {getStatusOptions(selectedRequest.type).map(status => (
+                                                            <option key={status} value={status}>{status}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
                                                 <button
-                                                    onClick={() => setIsRejecting(true)}
-                                                    className="px-4 py-2 border border-slate-200 bg-white text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 hover:text-red-600 transition-colors"
+                                                    onClick={handleStatusUpdate}
+                                                    disabled={!selectedNewStatus}
+                                                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all mt-6 ${selectedNewStatus
+                                                            ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-200'
+                                                            : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                                        }`}
                                                 >
-                                                    Reject Request
+                                                    Update Status
                                                 </button>
-                                                <button
-                                                    onClick={() => handleConvertClick(selectedRequest)}
-                                                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 shadow-md shadow-indigo-200 transition-all flex items-center gap-2"
-                                                >
-                                                    <CheckSquare className="w-3.5 h-3.5" /> Convert to Task
-                                                </button>
-                                            </>
+                                            </div>
                                         )}
                                         {selectedRequest.status !== 'Pending' && (
-                                            <button onClick={() => setSelectedRequest(null)} className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50">
-                                                Close
-                                            </button>
+                                            <>
+                                                <button
+                                                    onClick={() => handleStatusChange(selectedRequest.id, 'Pending')}
+                                                    className="px-4 py-2 border border-indigo-200 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors"
+                                                >
+                                                    Change Status
+                                                </button>
+                                                <button onClick={() => setSelectedRequest(null)} className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50">
+                                                    Close
+                                                </button>
+                                            </>
                                         )}
                                     </>
                                 ) : (
@@ -330,11 +414,7 @@ export const ProjectClientRequests: React.FC<ProjectClientRequestsProps> = ({ pr
                                     </div>
                                 </td>
                                 <td className="px-6 py-5">
-                                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${req.status === 'Pending' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                                        req.status === 'Converted to Task' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                            req.status === 'Rejected' ? 'bg-slate-100 text-slate-500 border-slate-200' :
-                                                'bg-blue-50 text-blue-700 border-blue-200'
-                                        }`}>
+                                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${getStatusStyle(req.status)}`}>
                                         {req.status}
                                     </span>
                                 </td>

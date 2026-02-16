@@ -73,22 +73,46 @@ export const ClientTimesheet: React.FC<ClientTimesheetProps> = ({ project }) => 
    }, [logs, projectTaskIds]);
 
    const [dateRange, setDateRange] = useState<DateRange>('this_month');
+   const [selectedResource, setSelectedResource] = useState<string>('all');
+   const [selectedTask, setSelectedTask] = useState<string>('all');
 
-   const [viewMode, setViewMode] = useState<GroupMode>('date');
+   // Forced to 'date' view per user requirement
+   const viewMode = 'date';
    const [density, setDensity] = useState<Density>('comfortable');
    const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
    const [showAllForDay, setShowAllForDay] = useState<Record<string, boolean>>({}); // Track "Show More" state
 
-   // Auto-switch logic
-   useEffect(() => {
-      if (project.type === 'HIRE_BASE') {
-         setViewMode('resource');
-      } else if (dateRange === 'this_month' || dateRange === 'last_month') {
-         setViewMode('task');
-      } else {
-         setViewMode('date');
-      }
-   }, [dateRange, project.type]);
+   // Unique Lists for Dropdowns
+   const uniqueResources = useMemo(() => {
+      const resources = new Map();
+      allLogs.forEach(log => {
+         if (log.isClientVisible && !resources.has(log.userId)) {
+            resources.set(log.userId, log.userName);
+         }
+      });
+      return Array.from(resources.entries()).map(([id, name]) => ({ id, name }));
+   }, [allLogs]);
+
+   const uniqueTasks = useMemo(() => {
+      const tasks = new Map();
+      allLogs.forEach(log => {
+         if (log.isClientVisible && !tasks.has(log.taskId)) {
+            tasks.set(log.taskId, log.taskTitle);
+         }
+      });
+      return Array.from(tasks.entries()).map(([id, title]) => ({ id, title }));
+   }, [allLogs]);
+
+   // Auto-switch logic removed to respect user preference for Date view
+   // useEffect(() => {
+   //    if (project.type === 'HIRE_BASE') {
+   //       setViewMode('resource');
+   //    } else if (dateRange === 'this_month' || dateRange === 'last_month') {
+   //       setViewMode('task');
+   //    } else {
+   //       setViewMode('date');
+   //    }
+   // }, [dateRange, project.type]);
 
 
    const filteredLogs = useMemo(() => {
@@ -121,6 +145,13 @@ export const ClientTimesheet: React.FC<ClientTimesheetProps> = ({ project }) => 
 
       return allLogs.filter(log => {
          if (!log.isClientVisible) return false;
+
+         // Resource Filter
+         if (selectedResource !== 'all' && log.userId !== selectedResource) return false;
+
+         // Task Filter
+         if (selectedTask !== 'all' && log.taskId !== selectedTask) return false;
+
          const logDate = getStartOfDay(new Date(log.date));
 
          if (dateRange === 'today') return logDate.getTime() === today.getTime();
@@ -131,7 +162,7 @@ export const ClientTimesheet: React.FC<ClientTimesheetProps> = ({ project }) => 
          if (dateRange === 'all') return true;
          return true;
       });
-   }, [allLogs, dateRange]);
+   }, [allLogs, dateRange, selectedResource, selectedTask]);
 
    const groupedData = useMemo(() => {
       const groups: Record<string, { totalHours: number, logs: WorkLog[], metadata?: any }> = {};
@@ -143,20 +174,8 @@ export const ClientTimesheet: React.FC<ClientTimesheetProps> = ({ project }) => 
          let key = '';
          let meta = {};
 
-         if (viewMode === 'date') {
-            key = log.date;
-         } else if (viewMode === 'task') {
-            key = log.taskId || 'unknown';
-            meta = { title: log.taskTitle };
-         } else if (viewMode === 'resource') {
-            const isGhost = log.userName.includes('Shadow') || log.userId === 'u4';
-            key = isGhost ? 'generic-team' : log.userId;
-            meta = {
-               name: isGhost ? 'Collab Team Member' : log.userName,
-               avatar: isGhost ? 'CT' : log.userAvatar,
-               isGhost
-            };
-         }
+         // ALWAYS Group by Date
+         key = log.date;
 
          if (!groups[key]) {
             groups[key] = { totalHours: 0, logs: [], metadata: meta };
@@ -165,7 +184,7 @@ export const ClientTimesheet: React.FC<ClientTimesheetProps> = ({ project }) => 
          groups[key].totalHours += (log.billedHours || 0);
       });
       return groups;
-   }, [filteredLogs, viewMode]);
+   }, [filteredLogs]);
 
    // Initial expansion
    useEffect(() => {
@@ -206,56 +225,23 @@ export const ClientTimesheet: React.FC<ClientTimesheetProps> = ({ project }) => 
 
    return (
       <div className="space-y-6 animate-fade-in">
-         {/* Metrics Row */}
-         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Budget Utilization */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
-               <div className='flex-1'>
-                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Budget Utilization (Total)</h3>
-                  <div className="flex items-baseline gap-1">
-                     <span className="text-3xl font-extrabold text-slate-900">{budgetPercent}%</span>
-                     <span className="text-xs font-bold text-slate-400">consumed</span>
+         {/* Stats Row */}
+         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            {/* Activity Logged Only */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+               <div className="flex items-center justify-between mb-4">
+                  <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                     <TrendingUp className="w-5 h-5" />
                   </div>
-                  <div className="mt-4 w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                     <div className="bg-slate-300 h-full rounded-full" style={{ width: `${budgetPercent}%` }}></div>
-                  </div>
-                  <div className="flex justify-between mt-2 text-[10px] font-bold text-slate-400">
-                     <span>Used: {totalUsed}h</span>
-                     <span>Total: {totalBudget}h</span>
-                  </div>
+                  <span className="text-[10px] font-bold px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full">
+                     {dateRange === 'all' ? 'All Time' : dateRange.replace('_', ' ')}
+                  </span>
                </div>
-               <div className="h-16 w-16 text-slate-200 ml-4">
-                  <PieChart className="w-full h-full" />
+               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Activity Logged</p>
+               <div className="flex items-baseline gap-1">
+                  <h3 className="text-3xl font-black text-slate-800">{totalBilled.toFixed(1)}</h3>
+                  <span className="text-sm font-bold text-slate-500">hrs</span>
                </div>
-            </div>
-
-            {/* Balance Remaining */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
-               <div>
-                  <div className="mb-4 text-emerald-500 bg-emerald-50 p-2 rounded-lg w-fit">
-                     <Clock className="w-5 h-5" />
-                  </div>
-                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Balance Remaining</h3>
-                  <div className="text-3xl font-extrabold text-slate-900">-</div>
-               </div>
-               <div className="text-xs font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded">Hours</div>
-            </div>
-
-            {/* Activity Logged */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
-               <div>
-                  <div className="flex justify-between items-start w-full">
-                     <div className="mb-4 text-indigo-500 bg-indigo-50 p-2 rounded-lg w-fit">
-                        <TrendingUp className="w-5 h-5" />
-                     </div>
-                  </div>
-                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Activity Logged</h3>
-                  <div className="flex items-baseline gap-1">
-                     <span className="text-3xl font-extrabold text-slate-900">{totalBilled.toFixed(1)}</span>
-                     <span className="text-sm font-bold text-slate-500">hrs</span>
-                  </div>
-               </div>
-               <div className="text-xs font-bold text-indigo-100 bg-indigo-600 px-2 py-1 rounded">{formattedRange}</div>
             </div>
          </div>
 
@@ -290,26 +276,36 @@ export const ClientTimesheet: React.FC<ClientTimesheetProps> = ({ project }) => 
                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
                   </div>
 
-                  {/* View Switcher */}
-                  <div className="flex bg-slate-100 p-1 rounded-lg">
-                     <button
-                        onClick={() => setViewMode('date')}
-                        className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${viewMode === 'date' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  {/* Resource Filter */}
+                  <div className="relative">
+                     <select
+                        value={selectedResource}
+                        onChange={(e) => setSelectedResource(e.target.value)}
+                        className="appearance-none bg-white border border-slate-200 pl-9 pr-8 py-1.5 rounded-lg text-xs font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer hover:bg-slate-50 transition-colors"
                      >
-                        Date
-                     </button>
-                     <button
-                        onClick={() => setViewMode('resource')}
-                        className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${viewMode === 'resource' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        <option value="all">All Resources</option>
+                        {uniqueResources.map(res => (
+                           <option key={res.id} value={res.id}>{res.name}</option>
+                        ))}
+                     </select>
+                     <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                     <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                  </div>
+
+                  {/* Task Filter */}
+                  <div className="relative">
+                     <select
+                        value={selectedTask}
+                        onChange={(e) => setSelectedTask(e.target.value)}
+                        className="appearance-none bg-white border border-slate-200 pl-9 pr-8 py-1.5 rounded-lg text-xs font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer hover:bg-slate-50 transition-colors max-w-[200px] truncate"
                      >
-                        Resource
-                     </button>
-                     <button
-                        onClick={() => setViewMode('task')}
-                        className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${viewMode === 'task' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                     >
-                        Task
-                     </button>
+                        <option value="all">All Tasks</option>
+                        {uniqueTasks.map(task => (
+                           <option key={task.id} value={task.id}>{task.title}</option>
+                        ))}
+                     </select>
+                     <CheckSquare className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                     <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
                   </div>
 
                   {/* Density Toggle */}
@@ -346,7 +342,7 @@ export const ClientTimesheet: React.FC<ClientTimesheetProps> = ({ project }) => 
                      {Object.keys(groupedData).sort((a, b) => new Date(b).getTime() - new Date(a).getTime()).map(key => {
                         const group = groupedData[key];
                         const isExpanded = expandedGroups[key] !== false;
-                        const stats = viewMode === 'date' ? getDailyStats(group.logs) : null;
+                        const stats = getDailyStats(group.logs);
 
                         // Progressive Disclosure Logic
                         const shouldShowAll = showAllForDay[key] || false;
@@ -366,19 +362,15 @@ export const ClientTimesheet: React.FC<ClientTimesheetProps> = ({ project }) => 
                                     </div>
 
                                     {/* Group Icon */}
-                                    {viewMode === 'task' && <div className="hidden md:flex p-1.5 bg-indigo-50 text-indigo-600 rounded"><CheckSquare className="w-4 h-4" /></div>}
-                                    {viewMode === 'date' && <div className="hidden md:flex p-1.5 bg-blue-50 text-blue-600 rounded"><Calendar className="w-4 h-4" /></div>}
-                                    {viewMode === 'resource' && <div className="hidden md:flex p-1.5 bg-purple-50 text-purple-600 rounded"><Users className="w-4 h-4" /></div>}
+                                    <div className="hidden md:flex p-1.5 bg-blue-50 text-blue-600 rounded"><Calendar className="w-4 h-4" /></div>
 
                                     <div className="flex items-center gap-3">
                                        <h4 className="text-sm font-bold text-slate-800">
-                                          {viewMode === 'task' ? group.metadata.title :
-                                             viewMode === 'date' ? new Date(key).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) :
-                                                group.metadata.name}
+                                          {new Date(key).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
                                        </h4>
 
                                        {/* Rich Header Stats (Date View Only) */}
-                                       {viewMode === 'date' && stats && (
+                                       {stats && (
                                           <div className="hidden md:flex items-center gap-3 ml-2">
                                              <span className="text-slate-300">|</span>
                                              <div className="flex items-center gap-1.5 text-xs text-slate-500 font-bold" title="Unique Team Members">
@@ -395,7 +387,6 @@ export const ClientTimesheet: React.FC<ClientTimesheetProps> = ({ project }) => 
                                  </div>
 
                                  <div className="flex items-center gap-4">
-                                    {viewMode === 'task' && <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">{group.logs.length} entries</span>}
                                     <div className="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-lg border border-indigo-100 min-w-[80px] text-center">
                                        {group.totalHours.toFixed(2)} hrs
                                     </div>
@@ -418,28 +409,23 @@ export const ClientTimesheet: React.FC<ClientTimesheetProps> = ({ project }) => 
                                        return (
                                           <div key={log.id} className={`px-6 ${paddingY} pl-14 md:pl-20 flex items-center justify-between hover:bg-white transition-colors group/item`}>
                                              <div className="flex items-center gap-4">
-                                                {viewMode !== 'resource' && (
-                                                   <div className={`${avatarSize} rounded-full flex items-center justify-center font-bold shrink-0 shadow-sm border border-white ${avatarColor} overflow-hidden`}>
-                                                      {isGhost ? <Shield className="w-3 h-3" /> : (
-                                                         displayAvatar.startsWith('http') ?
-                                                            <img src={displayAvatar} alt={log.userName} className="w-full h-full object-cover" /> :
-                                                            displayAvatar
-                                                      )}
-                                                   </div>
-                                                )}
-                                                <div>
-                                                   {viewMode !== 'task' && (
-                                                      <div className="flex items-center gap-2">
-                                                         <h5 className="text-sm font-bold text-slate-700 mb-0.5">{log.taskTitle}</h5>
-                                                         {/* Count Badge for Merged Logs */}
-                                                         {(log as any)._count > 1 && (
-                                                            <span className="px-1.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-[9px] font-bold text-slate-500">
-                                                               {(log as any)._count} entries
-                                                            </span>
-                                                         )}
-                                                      </div>
+                                                <div className={`${avatarSize} rounded-full flex items-center justify-center font-bold shrink-0 shadow-sm border border-white ${avatarColor} overflow-hidden`}>
+                                                   {isGhost ? <Shield className="w-3 h-3" /> : (
+                                                      displayAvatar.startsWith('http') ?
+                                                         <img src={displayAvatar} alt={log.userName} className="w-full h-full object-cover" /> :
+                                                         displayAvatar
                                                    )}
-                                                   <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-3">
+                                                </div>
+                                                <div>
+                                                   <div className="flex items-center gap-2">
+                                                      <h5 className="text-sm font-bold text-slate-700 mb-0.5">{log.taskTitle}</h5>
+                                                      {/* Count Badge for Merged Logs */}
+                                                      {(log as any)._count > 1 && (
+                                                         <span className="px-1.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-[9px] font-bold text-slate-500">
+                                                            {(log as any)._count} entries
+                                                         </span>
+                                                      )}
+                                                   </div><div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-3">
                                                       {/* Show timestamp in all views */}
                                                       <div className="text-xs font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded w-fit">
                                                          {new Date(log.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}

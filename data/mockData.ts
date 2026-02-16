@@ -33,7 +33,9 @@ export const PROJECTS: Project[] = [
         tasks: [],
         clientRequests: [
             { id: 'req1', title: 'Add Dark Mode', description: 'Clients are asking for dark mode support in the dashboard.', type: 'Feature', status: 'Pending', submittedBy: USERS.CLIENT, submittedAt: 'Feb 10, 2026' },
-            { id: 'req2', title: 'Fix Login Typo', description: 'There is a typo on the login screen "Passwrod".', type: 'Bug', status: 'Converted to Task', submittedBy: USERS.CLIENT, submittedAt: 'Feb 08, 2026' }
+            { id: 'req2', title: 'Fix Login Typo', description: 'There is a typo on the login screen "Passwrod".', type: 'Bug', status: 'Converted to Task', submittedBy: USERS.CLIENT, submittedAt: 'Feb 08, 2026' },
+            { id: 'req3', title: 'Dashboard UI Feedback', description: 'The dashboard could be more intuitive. Consider reorganizing the widgets.', type: 'Feedback', status: 'Acknowledged', submittedBy: USERS.CLIENT, submittedAt: 'Feb 12, 2026' },
+            { id: 'req4', title: 'Export to PDF Feature', description: 'It would be great to export reports as PDF files.', type: 'Feedback', status: 'Under Consideration', submittedBy: USERS.CLIENT, submittedAt: 'Feb 14, 2026' }
         ],
         documents: [],
         team: [
@@ -60,7 +62,7 @@ export const PROJECTS: Project[] = [
         ],
         tasks: [],
         clientRequests: [
-            { id: 'cr1', type: 'Bug', title: 'Login page formatting issue', description: 'The logo is misaligned on mobile screens.', status: 'Pending', priority: 'Medium', submittedBy: USERS.DEV_2, submittedAt: '2 days ago' }
+            { id: 'cr1', type: 'Bug', title: 'Login page formatting issue', description: 'The logo is misaligned on mobile screens.', status: 'Pending', priority: 'Medium', submittedBy: USERS.DEV_2, submittedAt: '2 days ago', taskId: 't1' }
         ],
         documents: [
             { id: 'doc1', name: 'Service Agreement.pdf', type: 'CONTRACT', category: 'VAULT', url: '#', addedBy: USERS.DEV_1, uploadedAt: '12 Jan 2023', size: '2.4 MB', isClientVisible: true, status: 'SIGNED' },
