@@ -61,6 +61,9 @@ export const ProjectClientRequests: React.FC<ProjectClientRequestsProps> = ({ pr
         // Special handling for "Converted to Task"
         if (selectedNewStatus === 'Converted to Task') {
             handleConvertClick(selectedRequest);
+        } else if (selectedNewStatus === 'Rejected') {
+            // Trigger Rejection Workflow
+            setIsRejecting(true);
         } else {
             handleStatusChange(selectedRequest.id, selectedNewStatus);
             setSelectedRequest(null);
@@ -299,8 +302,8 @@ export const ProjectClientRequests: React.FC<ProjectClientRequestsProps> = ({ pr
                                                     onClick={handleStatusUpdate}
                                                     disabled={!selectedNewStatus}
                                                     className={`px-4 py-2 rounded-lg text-xs font-bold transition-all mt-6 ${selectedNewStatus
-                                                            ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-200'
-                                                            : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                                        ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-200'
+                                                        : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                                                         }`}
                                                 >
                                                     Update Status

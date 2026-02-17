@@ -52,7 +52,7 @@ const generateMockLogs = (project: Project): WorkLog[] => {
 };
 
 export const ProjectTimesheet: React.FC<ProjectTimesheetProps> = ({ project }) => {
-    const viewMode = 'resource'; // Always show by resource (staff)
+    const [viewMode, setViewMode] = useState<'resource' | 'task'>('resource');
     const [logs, setLogs] = useState<WorkLog[]>(generateMockLogs(project));
     const [modalState, setModalState] = useState<{ isOpen: boolean, date: string, entityId: string, title: string } | null>(null);
 
@@ -93,7 +93,12 @@ export const ProjectTimesheet: React.FC<ProjectTimesheetProps> = ({ project }) =
 
         // Calculate totals: internal hours vs billed hours
         const totalHours = cellLogs.reduce((acc, curr) => acc + curr.hours, 0);
-        const totalBilled = cellLogs.reduce((acc, curr) => acc + (curr.billedHours ?? curr.hours), 0);
+
+        // Only count billed hours for logs that are CLIENT VISIBLE
+        const totalBilled = cellLogs.reduce((acc, curr) => {
+            if (!curr.isClientVisible) return acc;
+            return acc + (curr.billedHours ?? curr.hours);
+        }, 0);
 
         return { totalHours, totalBilled, logs: cellLogs };
     };
@@ -140,7 +145,22 @@ export const ProjectTimesheet: React.FC<ProjectTimesheetProps> = ({ project }) =
                 <div className="flex items-center gap-4">
                     <h2 className="text-lg font-bold text-slate-800">Timesheet Reports</h2>
                     <div className="h-6 w-[1px] bg-slate-200"></div>
-                    <span className="text-xs text-slate-500">Staff</span>
+
+                    {/* View Switcher */}
+                    <div className="flex bg-slate-100 p-1 rounded-lg">
+                        <button
+                            onClick={() => setViewMode('resource')}
+                            className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${viewMode === 'resource' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            Staff
+                        </button>
+                        <button
+                            onClick={() => setViewMode('task')}
+                            className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${viewMode === 'task' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            Task
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-3">
