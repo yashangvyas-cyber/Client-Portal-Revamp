@@ -152,7 +152,7 @@ export const ProjectTimesheet: React.FC<ProjectTimesheetProps> = ({ project }) =
                             onClick={() => setViewMode('resource')}
                             className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${viewMode === 'resource' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                         >
-                            Staff
+                            Resources
                         </button>
                         <button
                             onClick={() => setViewMode('task')}
