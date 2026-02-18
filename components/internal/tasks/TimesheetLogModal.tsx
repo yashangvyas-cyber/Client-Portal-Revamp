@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, Eye, EyeOff, User, Ghost, ArrowRight, Save, RotateCcw, Lock, AlertCircle, MessageSquare, CheckCircle } from 'lucide-react';
+import { X, Eye, EyeOff, User, Ghost, ArrowRight, Save, RotateCcw, Lock, AlertCircle, MessageSquare, CheckCircle, Ban } from 'lucide-react';
 import { WorkLog } from '../../../types';
 import { USERS } from '../../../constants';
 
@@ -117,39 +117,35 @@ const LogItem: React.FC<{
 
                 <div className="flex items-center gap-4">
                     {/* Hours Control Section */}
-                    <div className="flex flex-col items-end gap-1">
-                        <div className="flex items-center gap-2">
-                            <div className="text-[10px] uppercase font-bold text-slate-400">Spent:</div>
-                            <div className="text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">{log.hours.toFixed(2)}h</div>
+                    {/* Hours Control Section */}
+                    <div className="flex items-center gap-6 mr-2">
+                        <div className="flex flex-col items-center gap-0.5">
+                            <div className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Spent</div>
+                            <div className="text-sm font-bold text-slate-700">{log.hours.toFixed(2)}h</div>
                         </div>
 
                         {/* Only show Billed Hours if Client Visible */}
                         {log.isClientVisible ? (
-                            <div className="flex items-center gap-2">
-                                <div className="text-[10px] uppercase font-bold text-indigo-600">Billed:</div>
+                            <div className="flex flex-col items-center gap-0.5">
+                                <div className="text-[9px] uppercase font-bold text-indigo-600 tracking-wider">Billed</div>
                                 <div className="relative group/input">
                                     <input
                                         type="number"
-                                        className={`w-16 px-2 py-0.5 text-right text-xs font-bold border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all ${isHoursModified ? 'border-amber-400 bg-amber-50 text-amber-700' : 'border-slate-300 text-slate-800'}`}
+                                        className={`w-14 px-1 py-0.5 text-center text-sm font-bold border-b-2 border-transparent hover:border-slate-300 focus:border-indigo-500 bg-transparent focus:outline-none transition-all ${isHoursModified ? 'text-amber-700 border-amber-400 focus:border-amber-500' : 'text-slate-800'}`}
                                         value={currentBilledHours}
                                         onChange={(e) => handleBilledHoursChange(e.target.value)}
                                         step="0.25"
+                                        placeholder="0"
                                     />
-                                    {isHoursModified && (
-                                        <button
-                                            onClick={resetBilledHours}
-                                            className="absolute -right-6 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600"
-                                            title="Reset to Actual Hours"
-                                        >
-                                            <RotateCcw className="w-3 h-3" />
-                                        </button>
-                                    )}
                                 </div>
                             </div>
                         ) : (
-                            <div className="flex items-center gap-1.5 mt-1 opacity-70">
-                                <AlertCircle className="w-3 h-3 text-slate-400" />
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Not Billed</span>
+                            <div className="flex flex-col items-center gap-0.5 opacity-50">
+                                <div className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Billed</div>
+                                <div className="text-xs font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1">
+                                    <Ban className="w-3 h-3" />
+                                    <span>N/A</span>
+                                </div>
                             </div>
                         )}
                     </div>

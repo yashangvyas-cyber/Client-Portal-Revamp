@@ -370,118 +370,65 @@ export const ProjectClientRequests: React.FC<ProjectClientRequestsProps> = ({ pr
                         </div>
 
                         <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center shrink-0">
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs font-bold text-slate-500">Current Status:</span>
-                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${getStatusStyle(selectedRequest.status)}`}>
-                                    {selectedRequest.status}
-                                </span>
-                            </div>
+                            {!isRejecting ? (
+                                <div className="flex items-center gap-3">
+                                    <span className="text-xs font-bold text-slate-500">Status:</span>
+                                    <div className="flex items-center gap-2">
+                                        <div className="relative">
+                                            <select
+                                                value={selectedNewStatus || selectedRequest.status}
+                                                onChange={(e) => setSelectedNewStatus(e.target.value as ClientRequest['status'])}
+                                                className={`appearance-none pl-3 pr-8 py-1.5 rounded-lg text-[10px] font-bold uppercase border cursor-pointer focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-all ${getStatusStyle(selectedNewStatus || selectedRequest.status).replace('text-[10px]', 'text-xs')}`}
+                                            >
+                                                {/* Ensure current status is an option */}
+                                                {(!getStatusOptions(selectedRequest.type).includes(selectedRequest.status)) && (
+                                                    <option value={selectedRequest.status} className="bg-white text-slate-800">
+                                                        {selectedRequest.status}
+                                                    </option>
+                                                )}
+                                                {/* Available transitions */}
+                                                {getStatusOptions(selectedRequest.type).map(status => (
+                                                    <option key={status} value={status} className="bg-white text-slate-800">
+                                                        {status}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <ChevronDown className="w-3 h-3 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-50" />
+                                        </div>
+
+                                        {selectedNewStatus && selectedNewStatus !== selectedRequest.status && (
+                                            <button
+                                                onClick={() => {
+                                                    if (selectedNewStatus === 'Converted to Task') {
+                                                        handleConvertClick(selectedRequest);
+                                                    } else if (selectedNewStatus === 'Rejected') {
+                                                        setIsRejecting(true);
+                                                    } else {
+                                                        handleStatusChange(selectedRequest.id, selectedNewStatus);
+                                                    }
+                                                    if (selectedNewStatus !== 'Rejected' && selectedNewStatus !== 'Converted to Task') {
+                                                        setSelectedNewStatus('');
+                                                    }
+                                                }}
+                                                className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 shadow-md shadow-indigo-200 animate-fade-in"
+                                            >
+                                                Submit
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div></div>
+                            )}
 
                             <div className="flex gap-3">
                                 {!isRejecting ? (
-                                    <>
-                                        {selectedRequest.status === 'Pending' && (
-                                            <div className="flex items-center gap-3 flex-1">
-                                                <div className="flex-1">
-                                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Update Status</label>
-                                                    <select
-                                                        value={selectedNewStatus}
-                                                        onChange={(e) => setSelectedNewStatus(e.target.value as ClientRequest['status'])}
-                                                        className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-all"
-                                                    >
-                                                        <option value="">Select new status...</option>
-                                                        {getStatusOptions(selectedRequest.type).map(status => (
-                                                            <option key={status} value={status}>{status}</option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-                                                <button
-                                                    onClick={handleStatusUpdate}
-                                                    disabled={!selectedNewStatus}
-                                                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all mt-6 ${selectedNewStatus
-                                                        ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-200'
-                                                        : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                                                        }`}
-                                                >
-                                                    Update Status
-                                                </button>
-                                            </div>
-                                        )}
-                                        {selectedRequest.status !== 'Pending' && (
-                                            <>
-                                                {changeStatusFlow === null && (
-                                                    <button
-                                                        onClick={() => setChangeStatusFlow('confirm')}
-                                                        className="px-4 py-2 border border-indigo-200 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors"
-                                                    >
-                                                        Change Status
-                                                    </button>
-                                                )}
-                                                {changeStatusFlow === 'confirm' && (
-                                                    <div className="flex items-center gap-2 animate-fade-in">
-                                                        <span className="text-xs text-slate-600 font-medium">Are you sure?</span>
-                                                        <button
-                                                            onClick={() => setChangeStatusFlow('select')}
-                                                            className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700"
-                                                        >
-                                                            Yes, Change
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setChangeStatusFlow(null)}
-                                                            className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50"
-                                                        >
-                                                            Cancel
-                                                        </button>
-                                                    </div>
-                                                )}
-                                                {changeStatusFlow === 'select' && (
-                                                    <div className="flex items-center gap-2 animate-fade-in">
-                                                        <select
-                                                            value={selectedNewStatus}
-                                                            onChange={(e) => setSelectedNewStatus(e.target.value as ClientRequest['status'])}
-                                                            className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-                                                            autoFocus
-                                                        >
-                                                            <option value="">Select new status...</option>
-                                                            {getStatusOptions(selectedRequest.type).map(status => (
-                                                                <option key={status} value={status}>{status}</option>
-                                                            ))}
-                                                        </select>
-                                                        <button
-                                                            onClick={() => {
-                                                                if (!selectedNewStatus) return;
-                                                                if (selectedNewStatus === 'Converted to Task') {
-                                                                    handleConvertClick(selectedRequest);
-                                                                } else if (selectedNewStatus === 'Rejected') {
-                                                                    setIsRejecting(true);
-                                                                } else {
-                                                                    handleStatusChange(selectedRequest.id, selectedNewStatus);
-                                                                    setSelectedRequestId(null);
-                                                                }
-                                                                setChangeStatusFlow(null);
-                                                                setSelectedNewStatus('');
-                                                            }}
-                                                            disabled={!selectedNewStatus}
-                                                            className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 disabled:opacity-50"
-                                                        >
-                                                            Apply
-                                                        </button>
-                                                        <button
-                                                            onClick={() => { setChangeStatusFlow(null); setSelectedNewStatus(''); }}
-                                                            className="px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50"
-                                                        >
-                                                            Cancel
-                                                        </button>
-                                                    </div>
-                                                )}
-                                                {changeStatusFlow === null && (
-                                                    <button onClick={() => { setSelectedRequestId(null); setChangeStatusFlow(null); }} className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50">
-                                                        Close
-                                                    </button>
-                                                )}
-                                            </>
-                                        )}
-                                    </>
+                                    <button
+                                        onClick={() => { setSelectedRequestId(null); setChangeStatusFlow(null); }}
+                                        className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50"
+                                    >
+                                        Close
+                                    </button>
                                 ) : (
                                     <>
                                         <button
