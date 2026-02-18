@@ -120,10 +120,10 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ project: initialProject, o
                                  </td>
                                  <td className="px-4 py-3">
                                     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${task.status === 'TODO' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
-                                          task.status === 'IN_PROGRESS' ? 'bg-orange-100 text-orange-700 border border-orange-200' :
-                                             task.status === 'IN_REVIEW' ? 'bg-purple-100 text-purple-700 border border-purple-200' :
-                                                task.status === 'QA' ? 'bg-green-100 text-green-700 border border-green-200' :
-                                                   'bg-slate-100 text-slate-700 border border-slate-200'
+                                       task.status === 'IN_PROGRESS' ? 'bg-orange-100 text-orange-700 border border-orange-200' :
+                                          task.status === 'IN_REVIEW' ? 'bg-purple-100 text-purple-700 border border-purple-200' :
+                                             task.status === 'QA' ? 'bg-green-100 text-green-700 border border-green-200' :
+                                                'bg-slate-100 text-slate-700 border border-slate-200'
                                        }`}>
                                        {task.status === 'TODO' ? 'To Do' :
                                           task.status === 'IN_PROGRESS' ? 'In Progress' :
@@ -135,8 +135,8 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ project: initialProject, o
                                  <td className="px-4 py-3">
                                     <div className="flex items-center gap-1.5">
                                        <div className={`w-2 h-2 rounded-full ${task.priority === Priority.HIGH ? 'bg-red-500' :
-                                             task.priority === Priority.MEDIUM ? 'bg-yellow-500' :
-                                                'bg-blue-500'
+                                          task.priority === Priority.MEDIUM ? 'bg-yellow-500' :
+                                             'bg-blue-500'
                                           }`}></div>
                                        <span className="text-xs font-medium text-slate-600">
                                           {task.priority === Priority.HIGH ? 'High' :
@@ -190,11 +190,11 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ project: initialProject, o
 
       // Default Board View
       const columns = [
-         { title: 'To Do', count: project.tasks?.filter(t => t.status === 'TODO').length || 0, color: 'bg-blue-600', status: 'TODO' },
-         { title: 'In Progress', count: project.tasks?.filter(t => t.status === 'IN_PROGRESS').length || 0, color: 'bg-orange-500', status: 'IN_PROGRESS' },
-         { title: 'In Review', count: project.tasks?.filter(t => t.status === 'IN_REVIEW').length || 0, color: 'bg-red-500', status: 'IN_REVIEW' },
+         { title: 'To Do', count: project.tasks?.filter(t => t.status === TaskStatus.TODO).length || 0, color: 'bg-blue-600', status: TaskStatus.TODO },
+         { title: 'In Progress', count: project.tasks?.filter(t => t.status === TaskStatus.IN_PROGRESS).length || 0, color: 'bg-orange-500', status: TaskStatus.IN_PROGRESS },
+         { title: 'In Review', count: project.tasks?.filter(t => t.status === TaskStatus.REVIEW).length || 0, color: 'bg-red-500', status: TaskStatus.REVIEW },
          { title: 'Ready For QA', count: project.tasks?.filter(t => t.status === 'QA').length || 0, color: 'bg-green-500', status: 'QA' },
-         { title: 'Closed', count: project.tasks?.filter(t => t.status === 'DONE').length || 0, color: 'bg-slate-500', status: 'DONE' }
+         { title: 'Closed', count: project.tasks?.filter(t => t.status === TaskStatus.DONE).length || 0, color: 'bg-slate-500', status: TaskStatus.DONE }
       ];
 
       const renderCard = (task: Task) => (
@@ -292,7 +292,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ project: initialProject, o
                         </div>
 
                         <div className="bg-slate-100/50 rounded-xl p-2 flex-1 flex flex-col border border-slate-200/60 transition-colors hover:bg-slate-100/80">
-                           {project.tasks?.filter(t => t.status === (col.status as any)).map(renderCard)}
+                           {project.tasks?.filter(t => t.status === (col.status as TaskStatus)).map(renderCard)}
 
                            {/* Empty State */}
                            {col.count === 0 && (

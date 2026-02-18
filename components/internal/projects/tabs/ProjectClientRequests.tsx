@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
-import { Project, ClientRequest, RequestComment } from '../../../../types';
+import { Project, ClientRequest, RequestComment, Task, TaskStatus, Priority } from '../../../../types';
 import { useSharedData } from '../../../../context/SharedDataContext';
+import { CreateIssueModal } from '../../tasks/CreateIssueModal';
 import { Search, AlertCircle, CheckSquare, MessageSquare, ArrowRight, Ban, Check, RefreshCw, X, ArrowUpRight, ChevronDown, Paperclip, Eye, ExternalLink, Send } from 'lucide-react';
 
 interface ProjectClientRequestsProps {
@@ -10,7 +11,7 @@ interface ProjectClientRequestsProps {
 }
 
 export const ProjectClientRequests: React.FC<ProjectClientRequestsProps> = ({ project, onRequestConvert }) => {
-    const { updateClientRequest, currentUser } = useSharedData();
+    const { updateClientRequest, currentUser, addTask } = useSharedData();
     const requests = project.clientRequests || [];
     const [selectedRequest, setSelectedRequest] = useState<ClientRequest | null>(null);
 
@@ -36,6 +37,10 @@ export const ProjectClientRequests: React.FC<ProjectClientRequestsProps> = ({ pr
     const [isRejecting, setIsRejecting] = useState(false);
     const [newComment, setNewComment] = useState('');
     const [selectedNewStatus, setSelectedNewStatus] = useState<ClientRequest['status'] | ''>('');
+
+    // Task Creation Modal State
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [requestToConvert, setRequestToConvert] = useState<ClientRequest | null>(null);
 
     // Get status options based on request type
     const getStatusOptions = (type: ClientRequest['type']): ClientRequest['status'][] => {
@@ -75,10 +80,62 @@ export const ProjectClientRequests: React.FC<ProjectClientRequestsProps> = ({ pr
         // Close triage modal
         setSelectedRequest(null);
         setSelectedNewStatus('');
-        // Change status to converted
-        handleStatusChange(req.id, 'Converted to Task');
-        // Trigger parent handler to open create issue modal
+
+        // Open Task Creation Modal
+        setRequestToConvert(req);
+        setIsCreateModalOpen(true);
+
+        // Trigger parent handler (if it was doing anything else)
         if (onRequestConvert) onRequestConvert(req);
+    };
+
+    const handleTaskCreated = (issueData: any) => {
+        if (!requestToConvert) return;
+
+        console.log('ProjectClientRequests: handleTaskCreated called', { issueData, requestToConvert });
+
+        try {
+            // 1. Generate Task ID
+            const newTaskId = `T-${Math.floor(Math.random() * 10000)}`;
+
+            // 2. Create Task Object
+            // Normalize priority (e.g. "Medium" -> "MEDIUM")
+            const normalizedPriority = (issueData.priority?.toUpperCase() as Priority) || Priority.MEDIUM;
+
+            const newTask: Task = {
+                id: newTaskId,
+                title: issueData.title,
+                description: issueData.description,
+                status: TaskStatus.TODO,
+                priority: normalizedPriority,
+                isClientVisible: issueData.isClientVisible !== false, // Default to true unless explicitly hidden
+                // Create team from assignee if present
+                team: issueData.assignee ? [{ user: currentUser, isGhost: false }] : [], // Simplification for prototype
+                timeLogs: { internal: 0, billable: 0 },
+                dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                projectId: project.id
+            };
+
+            console.log('ProjectClientRequests: Creating Task', newTask);
+
+            // 3. Add to detailed state
+            addTask(project.id, newTask);
+
+            // 4. Link to Request using convertedTaskId (preserving original taskId)
+            console.log('ProjectClientRequests: Linking Task to Request', requestToConvert.id);
+            updateClientRequest(project.id, requestToConvert.id, {
+                status: 'Converted to Task',
+                convertedTaskId: newTaskId
+            });
+
+            // Close modal
+            console.log('ProjectClientRequests: Closing Modal');
+            setIsCreateModalOpen(false);
+            setRequestToConvert(null);
+        } catch (error) {
+            console.error('ProjectClientRequests: Error creating task or linking request', error);
+            alert('Failed to create task. Please check console for details.');
+        }
     };
 
     const handleRejectClick = () => {
@@ -161,13 +218,13 @@ export const ProjectClientRequests: React.FC<ProjectClientRequestsProps> = ({ pr
                                         </div>
                                     </div>
 
-                                    {/* Related Task Section - Only for Bug Reports */}
-                                    {selectedRequest.type === 'Bug' && selectedRequest.taskId && (() => {
+                                    {/* Related Task Section - User-selected task */}
+                                    {selectedRequest.taskId && (() => {
                                         const relatedTask = project.tasks?.find(t => t.id === selectedRequest.taskId);
                                         return (
                                             <div>
                                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">
-                                                    Related Task
+                                                    Related Task <span className="text-[10px] text-slate-400 font-normal">(Selected by client)</span>
                                                 </label>
                                                 <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-center gap-3 hover:bg-blue-100 transition-colors cursor-pointer">
                                                     <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
@@ -182,6 +239,32 @@ export const ProjectClientRequests: React.FC<ProjectClientRequestsProps> = ({ pr
                                                         </div>
                                                     </div>
                                                     <ExternalLink className="w-4 h-4 text-blue-600" />
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
+
+                                    {/* Converted Task Section - System-generated task */}
+                                    {selectedRequest.convertedTaskId && (() => {
+                                        const convertedTask = project.tasks?.find(t => t.id === selectedRequest.convertedTaskId);
+                                        return (
+                                            <div>
+                                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">
+                                                    Converted Task <span className="text-[10px] text-slate-400 font-normal">(Created from this request)</span>
+                                                </label>
+                                                <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex items-center gap-3 hover:bg-emerald-100 transition-colors cursor-pointer">
+                                                    <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                                                        <CheckSquare className="w-4 h-4" />
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <div className="text-xs font-mono text-emerald-600 mb-0.5">
+                                                            {selectedRequest.convertedTaskId}
+                                                        </div>
+                                                        <div className="text-sm font-bold text-slate-800">
+                                                            {convertedTask ? convertedTask.title : 'Task not found'}
+                                                        </div>
+                                                    </div>
+                                                    <ExternalLink className="w-4 h-4 text-emerald-600" />
                                                 </div>
                                             </div>
                                         );
@@ -439,6 +522,21 @@ export const ProjectClientRequests: React.FC<ProjectClientRequestsProps> = ({ pr
                     </tbody>
                 </table>
             </div>
+            {/* Task Creation Modal */}
+            <CreateIssueModal
+                isOpen={isCreateModalOpen}
+                onClose={() => {
+                    setIsCreateModalOpen(false);
+                    setRequestToConvert(null);
+                }}
+                onSubmit={handleTaskCreated}
+                initialData={requestToConvert ? {
+                    title: requestToConvert.title,
+                    description: requestToConvert.description,
+                    priority: requestToConvert.priority,
+                    type: requestToConvert.type === 'Bug' ? 'Bug' : 'Task'
+                } : undefined}
+            />
         </div>
     );
 };

@@ -1,7 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useMemo } from 'react';
 import { Deal, Project, ProjectType, Invoice, TaskStatus, ClientRequest, Priority } from '../types';
-import { Eye, ArrowUpRight, MessageSquare, Briefcase, Calendar, CheckCircle2, FileText, Clock, Users, DollarSign, ChevronRight, CheckSquare, PlusCircle, Check, X, AlertCircle, Paperclip, ChevronDown, PieChart, Shield, Image, Search, Download, Star as Start } from 'lucide-react';
+import { Eye, ArrowUpRight, MessageSquare, Briefcase, Calendar, CheckCircle2, FileText, Clock, Users, DollarSign, ChevronRight, CheckSquare, PlusCircle, Check, X, AlertCircle, Paperclip, ChevronDown, PieChart, Shield, Image, Search, Download, Star as Start, Filter } from 'lucide-react';
 import { USERS } from '../constants';
 import { ClientTaskDetailView } from './client/ClientTaskDetailView';
 import { ClientTimesheet } from './client/ClientTimesheet';
@@ -365,6 +366,16 @@ export const ClientProjectDetail: React.FC<{ project: Project; deals: Deal[]; on
    const [newReqPriority, setNewReqPriority] = useState<'Low' | 'Medium' | 'High'>('Medium');
    const [newReqTaskId, setNewReqTaskId] = useState<string>(''); // For Bug Reports to link to a task
 
+   // Filter State for My Requests Tab - chip-based sequential popup
+   // filterStep: null=closed, 'field'=field popup open, 'operator'=operator popup open, 'value'=value popup open
+   const [filterStep, setFilterStep] = useState<null | 'field' | 'operator' | 'value'>(null);
+   const [filterField, setFilterField] = useState<'status' | 'priority' | 'name' | 'refId' | 'date' | 'type' | null>(null);
+   const [filterOperator, setFilterOperator] = useState<'is' | 'is not' | 'contains' | 'before' | 'after' | null>(null);
+   const [filterValue, setFilterValue] = useState('');
+   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+   const [selectedPriorities, setSelectedPriorities] = useState<string[]>([]);
+   const [isFilterActive, setIsFilterActive] = useState(false);
+
    // Derived Mode
    const isEditMode = !!selectedRequest && selectedRequest.status === 'Pending';
    const isViewMode = !!selectedRequest && selectedRequest.status !== 'Pending';
@@ -438,19 +449,118 @@ export const ClientProjectDetail: React.FC<{ project: Project; deals: Deal[]; on
       setTimeout(() => setSelectedRequest(null), 300); // Clear after animation
    };
 
-   // --- Kanban Logic ---
-   const handleApproveTask = (taskId: string) => {
-      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: TaskStatus.DONE } : t));
+   // Apply filters for My Requests tab
+   const filteredRequests = useMemo(() => {
+      if (!isFilterActive) return project.clientRequests || [];
+
+      return (project.clientRequests || []).filter(req => {
+         // Multi-select filters with operator support
+         if (filterField === 'status' && selectedStatuses.length > 0) {
+            const match = selectedStatuses.includes(req.status.toLowerCase());
+            return filterOperator === 'is not' ? !match : match;
+         }
+         if (filterField === 'priority' && selectedPriorities.length > 0) {
+            const match = selectedPriorities.includes((req.priority || '').toLowerCase());
+            return filterOperator === 'is not' ? !match : match;
+         }
+
+         // Text-based filters
+         if (!filterValue) return true;
+
+         let fieldValue: string = '';
+
+         switch (filterField) {
+            case 'name':
+               fieldValue = req.title.toLowerCase();
+               break;
+            case 'refId':
+               fieldValue = req.id.toLowerCase();
+               break;
+            case 'date':
+               fieldValue = req.submittedAt;
+               break;
+            case 'type':
+               fieldValue = req.type.toLowerCase();
+               break;
+            default:
+               return true;
+         }
+
+         const searchValue = filterValue.toLowerCase();
+
+         // Apply operator
+         switch (filterOperator) {
+            case 'is':
+               return fieldValue === searchValue;
+            case 'is not':
+               return fieldValue !== searchValue;
+            case 'contains':
+               return fieldValue.includes(searchValue);
+            case 'before':
+               if (filterField === 'date') {
+                  return new Date(fieldValue) < new Date(filterValue);
+               }
+               return false;
+            case 'after':
+               if (filterField === 'date') {
+                  return new Date(fieldValue) > new Date(filterValue);
+               }
+               return false;
+            default:
+               return true;
+         }
+      });
+   }, [project.clientRequests, isFilterActive, filterField, filterOperator, filterValue, selectedStatuses, selectedPriorities]);
+
+   // Get available operators based on field
+   const getOperators = () => {
+      if (filterField === 'date') {
+         return [
+            { value: 'is', label: 'Is' },
+            { value: 'before', label: 'Before' },
+            { value: 'after', label: 'After' }
+         ];
+      }
+      if (filterField === 'status' || filterField === 'priority') {
+         return [
+            { value: 'is', label: 'Is' },
+            { value: 'is not', label: 'Is not' }
+         ];
+      }
+      return [
+         { value: 'is', label: 'Is' },
+         { value: 'is not', label: 'Is not' },
+         { value: 'contains', label: 'Contains' }
+      ];
    };
 
-   const handleRejectTask = (taskId: string) => {
-      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: TaskStatus.IN_PROGRESS } : t));
+   // Field definitions
+   const filterFields = [
+      { value: 'status', label: 'Status', icon: <span className="text-slate-400">○</span> },
+      { value: 'priority', label: 'Priority', icon: <span className="text-yellow-500">⚡</span> },
+      { value: 'type', label: 'Type', icon: <span className="text-orange-400">□</span> },
+      { value: 'name', label: 'Name', icon: <span className="text-blue-400">✎</span> },
+      { value: 'refId', label: 'Code', icon: <span className="text-slate-400">#</span> },
+      { value: 'date', label: 'Submitted At', icon: <span className="text-red-400">📅</span> },
+   ];
+
+   const clearFilter = () => {
+      setFilterStep(null);
+      setFilterField(null);
+      setFilterOperator(null);
+      setFilterValue('');
+      setSelectedStatuses([]);
+      setSelectedPriorities([]);
+      setIsFilterActive(false);
    };
+
+   // --- Kanban Logic ---
+
 
    const kanbanColumns = [
       { id: TaskStatus.TODO, title: 'Up Next', color: 'bg-slate-100 border-slate-200' },
       { id: TaskStatus.IN_PROGRESS, title: 'In Progress', color: 'bg-blue-50 border-blue-100' },
-      { id: TaskStatus.REVIEW, title: 'Ready for Review', color: 'bg-amber-50 border-amber-200 ring-4 ring-amber-500/5', isInteractive: true },
+      { id: TaskStatus.REVIEW, title: 'Ready for Review', color: 'bg-amber-50 border-amber-200 ring-4 ring-amber-500/5' },
       { id: TaskStatus.DONE, title: 'Completed', color: 'bg-emerald-50 border-emerald-100' },
    ];
 
@@ -464,8 +574,6 @@ export const ClientProjectDetail: React.FC<{ project: Project; deals: Deal[]; on
             <ClientTaskDetailView
                task={selectedTaskObj}
                onClose={() => setSelectedTaskForDetail(null)}
-               onApprove={handleApproveTask}
-               onReject={handleRejectTask}
             />
          )}
 
@@ -758,7 +866,7 @@ export const ClientProjectDetail: React.FC<{ project: Project; deals: Deal[]; on
                                        <div
                                           key={task.id}
                                           onClick={() => setSelectedTaskForDetail(task.id)}
-                                          className={`bg-white p-4 rounded-xl border shadow-sm hover: shadow-md transition-all group relative cursor-pointer ${column.isInteractive ? 'border-amber-200 ring-1 ring-amber-100' : 'border-slate-200'} `}
+                                          className={`bg-white p-4 rounded-xl border shadow-sm hover: shadow-md transition-all group relative cursor-pointer border-slate-200`}
                                        >
                                           {/* Header Status/Priority */}
                                           <div className="flex justify-between items-start mb-2">
@@ -777,22 +885,7 @@ export const ClientProjectDetail: React.FC<{ project: Project; deals: Deal[]; on
                                           <p className="text-xs text-slate-500 line-clamp-2 mb-4">{task.description}</p>
 
                                           {/* Approvals Action Area (Visible in Kanban, but also in Modal) */}
-                                          {column.isInteractive && (
-                                             <div className="mb-4 flex gap-2">
-                                                <button
-                                                   onClick={(e) => { e.stopPropagation(); handleApproveTask(task.id); }}
-                                                   className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1 shadow-sm transition-colors"
-                                                >
-                                                   <Check className="w-3.5 h-3.5" /> Approve
-                                                </button>
-                                                <button
-                                                   onClick={(e) => { e.stopPropagation(); handleRejectTask(task.id); }}
-                                                   className="flex-1 bg-white border border-slate-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-slate-600 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-colors"
-                                                >
-                                                   <X className="w-3.5 h-3.5" /> Reject
-                                                </button>
-                                             </div>
-                                          )}
+
 
                                           <div className="flex items-center justify-between pt-3 border-t border-slate-50">
                                              {/* Sanitized Team View */}
@@ -1007,10 +1100,223 @@ export const ClientProjectDetail: React.FC<{ project: Project; deals: Deal[]; on
                   </button>
                </div>
 
+               {/* Filter - Chip-based sequential popup bar */}
+               <div className="bg-white border border-slate-200 rounded-xl shadow-sm relative">
+                  {/* Filter bar - shows chips + placeholder */}
+                  <div
+                     className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] cursor-text flex-wrap"
+                     onClick={() => { if (!filterStep && !isFilterActive) setFilterStep('field'); }}
+                  >
+                     <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
+
+                     {/* Field chip */}
+                     {filterField && (
+                        <button
+                           onClick={(e) => { e.stopPropagation(); setFilterStep('field'); }}
+                           className="flex items-center gap-1 px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-medium text-slate-700 hover:bg-slate-200 transition-colors"
+                        >
+                           {filterFields.find(f => f.value === filterField)?.icon}
+                           <span>{filterFields.find(f => f.value === filterField)?.label}</span>
+                        </button>
+                     )}
+
+                     {/* Operator chip - for all fields */}
+                     {filterField && filterOperator && (
+                        <button
+                           onClick={(e) => { e.stopPropagation(); setFilterStep('operator'); }}
+                           className="flex items-center px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors"
+                        >
+                           {filterOperator.charAt(0).toUpperCase() + filterOperator.slice(1)}
+                        </button>
+                     )}
+
+                     {/* Value chip / input */}
+                     {filterStep === 'value' && filterField !== 'status' && filterField !== 'priority' ? (
+                        filterField === 'type' ? (
+                           <select
+                              autoFocus
+                              value={filterValue}
+                              onChange={(e) => {
+                                 setFilterValue(e.target.value);
+                                 if (e.target.value) { setIsFilterActive(true); setFilterStep(null); }
+                              }}
+                              className="text-xs border-0 outline-none bg-transparent text-slate-700 cursor-pointer"
+                              onClick={(e) => e.stopPropagation()}
+                           >
+                              <option value="">Select...</option>
+                              <option value="bug">Bug</option>
+                              <option value="feature">Feature</option>
+                              <option value="feedback">Feedback</option>
+                           </select>
+                        ) : filterField === 'date' ? (
+                           <input
+                              autoFocus
+                              type="date"
+                              value={filterValue}
+                              onChange={(e) => setFilterValue(e.target.value)}
+                              onBlur={() => { if (filterValue) { setIsFilterActive(true); setFilterStep(null); } }}
+                              className="text-xs border-0 outline-none bg-transparent text-slate-700 w-32"
+                              onClick={(e) => e.stopPropagation()}
+                           />
+                        ) : (
+                           <input
+                              autoFocus
+                              type="text"
+                              value={filterValue}
+                              onChange={(e) => setFilterValue(e.target.value)}
+                              onKeyDown={(e) => {
+                                 if (e.key === 'Enter' && filterValue) { setIsFilterActive(true); setFilterStep(null); }
+                                 if (e.key === 'Escape') clearFilter();
+                              }}
+                              onBlur={() => { if (filterValue) { setIsFilterActive(true); setFilterStep(null); } }}
+                              placeholder="Type and press Enter..."
+                              className="text-xs border-0 outline-none bg-transparent text-slate-700 placeholder-slate-400 min-w-[120px]"
+                              onClick={(e) => e.stopPropagation()}
+                           />
+                        )
+                     ) : isFilterActive && filterValue && filterField !== 'status' && filterField !== 'priority' ? (
+                        <button
+                           onClick={(e) => { e.stopPropagation(); setFilterStep('value'); }}
+                           className="flex items-center px-2 py-0.5 bg-indigo-50 border border-indigo-200 rounded text-xs font-medium text-indigo-700 hover:bg-indigo-100 transition-colors"
+                        >
+                           {filterValue}
+                        </button>
+                     ) : isFilterActive && (filterField === 'status' || filterField === 'priority') ? (
+                        <button
+                           onClick={(e) => { e.stopPropagation(); setFilterStep('value'); }}
+                           className="flex items-center px-2 py-0.5 bg-indigo-50 border border-indigo-200 rounded text-xs font-medium text-indigo-700 hover:bg-indigo-100 transition-colors"
+                        >
+                           {filterField === 'status' ? `${selectedStatuses.length} selected` : `${selectedPriorities.length} selected`}
+                        </button>
+                     ) : !filterField ? (
+                        <span className="text-sm text-slate-400">Filter Results...</span>
+                     ) : null}
+
+                     {/* Clear button */}
+                     {(filterField || isFilterActive) && (
+                        <button
+                           onClick={(e) => { e.stopPropagation(); clearFilter(); }}
+                           className="ml-auto flex-shrink-0 text-slate-400 hover:text-slate-600 transition-colors"
+                        >
+                           <X className="w-3.5 h-3.5" />
+                        </button>
+                     )}
+                  </div>
+
+                  {/* POPUP 1: Field selector */}
+                  {filterStep === 'field' && (
+                     <>
+                        <div className="fixed inset-0 z-40" onClick={() => setFilterStep(null)} />
+                        <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1 overflow-hidden">
+                           {filterFields.map(field => (
+                              <button
+                                 key={field.value}
+                                 onClick={() => {
+                                    setFilterField(field.value as any);
+                                    setFilterValue('');
+                                    setSelectedStatuses([]);
+                                    setSelectedPriorities([]);
+                                    setIsFilterActive(false);
+                                    setFilterOperator(null);
+                                    // Always go to operator step first
+                                    setFilterStep('operator');
+                                 }}
+                                 className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left"
+                              >
+                                 {field.icon}
+                                 <span>{field.label}</span>
+                              </button>
+                           ))}
+                        </div>
+                     </>
+                  )}
+
+                  {/* POPUP 2: Operator selector */}
+                  {filterStep === 'operator' && filterField && (
+                     <>
+                        <div className="fixed inset-0 z-40" onClick={() => setFilterStep(null)} />
+                        <div className="absolute top-full left-0 mt-1 w-36 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1 overflow-hidden">
+                           {getOperators().map(op => (
+                              <button
+                                 key={op.value}
+                                 onClick={() => {
+                                    setFilterOperator(op.value as any);
+                                    setFilterStep('value');
+                                 }}
+                                 className="w-full flex items-center px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left"
+                              >
+                                 {op.label}
+                              </button>
+                           ))}
+                        </div>
+                     </>
+                  )}
+
+                  {/* POPUP 3: Value selector for Status/Priority (multi-select) */}
+                  {filterStep === 'value' && (filterField === 'status' || filterField === 'priority') && (
+                     <>
+                        <div className="fixed inset-0 z-40" onClick={() => { setIsFilterActive(filterField === 'status' ? selectedStatuses.length > 0 : selectedPriorities.length > 0); setFilterStep(null); }} />
+                        <div className="absolute top-full left-0 mt-1 w-56 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                           <div className="max-h-64 overflow-y-auto py-1">
+                              {filterField === 'status' ? [
+                                 'Pending', 'Reviewing', 'Converted To Task', 'Rejected',
+                                 'Acknowledged', 'Under Consideration', 'Implemented',
+                                 'Not Planned', 'Resolved', 'Duplicate', 'Cannot Reproduce'
+                              ].map(status => (
+                                 <label key={status} className="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 cursor-pointer">
+                                    <input
+                                       type="checkbox"
+                                       checked={selectedStatuses.includes(status.toLowerCase())}
+                                       onChange={(e) => {
+                                          if (e.target.checked) setSelectedStatuses([...selectedStatuses, status.toLowerCase()]);
+                                          else setSelectedStatuses(selectedStatuses.filter(s => s !== status.toLowerCase()));
+                                       }}
+                                       className="w-4 h-4 text-indigo-600 border-slate-300 rounded"
+                                    />
+                                    <span className="text-sm text-slate-700">{status}</span>
+                                 </label>
+                              )) : ['Low', 'Medium', 'High', 'Critical'].map(priority => (
+                                 <label key={priority} className="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 cursor-pointer">
+                                    <input
+                                       type="checkbox"
+                                       checked={selectedPriorities.includes(priority.toLowerCase())}
+                                       onChange={(e) => {
+                                          if (e.target.checked) setSelectedPriorities([...selectedPriorities, priority.toLowerCase()]);
+                                          else setSelectedPriorities(selectedPriorities.filter(p => p !== priority.toLowerCase()));
+                                       }}
+                                       className="w-4 h-4 text-indigo-600 border-slate-300 rounded"
+                                    />
+                                    <span className="text-sm text-slate-700">{priority}</span>
+                                 </label>
+                              ))}
+                           </div>
+                           <div className="border-t border-slate-100 p-2">
+                              <button
+                                 onClick={() => {
+                                    setIsFilterActive(filterField === 'status' ? selectedStatuses.length > 0 : selectedPriorities.length > 0);
+                                    setFilterStep(null);
+                                 }}
+                                 className="w-full px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
+                              >
+                                 Apply
+                              </button>
+                           </div>
+                        </div>
+                     </>
+                  )}
+               </div>
+
+               {/* Active filter result count */}
+               {isFilterActive && (
+                  <div className="text-xs text-slate-500 px-1">
+                     {filteredRequests.length} result{filteredRequests.length !== 1 ? 's' : ''}
+                  </div>
+               )}
+
                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                  {project.clientRequests && project.clientRequests.length > 0 ? (
+                  {filteredRequests && filteredRequests.length > 0 ? (
                      <div className="divide-y divide-slate-100">
-                        {project.clientRequests.map(req => (
+                        {filteredRequests.map(req => (
                            <div
                               key={req.id}
                               onClick={() => { setSelectedRequest(req); setIsRequestModalOpen(true); }}
@@ -1077,8 +1383,12 @@ export const ClientProjectDetail: React.FC<{ project: Project; deals: Deal[]; on
                         <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
                            <Briefcase className="w-8 h-8 text-slate-300" />
                         </div>
-                        <p className="text-slate-500 font-medium">No requests submitted yet.</p>
-                        <button onClick={() => setIsRequestModalOpen(true)} className="mt-4 text-indigo-600 text-sm font-bold hover:underline">Submit your first request</button>
+                        <p className="text-slate-500 font-medium">
+                           {isFilterActive && filterValue ? 'No requests match your filter criteria.' : 'No requests submitted yet.'}
+                        </p>
+                        {!isFilterActive && (
+                           <button onClick={() => setIsRequestModalOpen(true)} className="mt-4 text-indigo-600 text-sm font-bold hover:underline">Submit your first request</button>
+                        )}
                      </div>
                   )}
                </div>

@@ -22,40 +22,40 @@ export const MOCK_PROJECTS: Project[] = [
     clientName: 'CollabCRM Internal',
     progress: 65,
     clientRequests: [
-       { id: 'req1', title: 'Add Dark Mode', description: 'Clients are asking for dark mode support in the dashboard.', type: 'Feature', status: 'Pending', submittedBy: USERS.adrian, submittedAt: 'Feb 10, 2026' },
-       { id: 'req2', title: 'Fix Login Typo', description: 'There is a typo on the login screen "Passwrod".', type: 'Bug', status: 'Converted to Task', submittedBy: USERS.adrian, submittedAt: 'Feb 08, 2026' }
+      { id: 'req1', title: 'Add Dark Mode', description: 'Clients are asking for dark mode support in the dashboard.', type: 'Feature', status: 'Pending', submittedBy: USERS.adrian, submittedAt: 'Feb 10, 2026' },
+      { id: 'req2', title: 'Fix Login Typo', description: 'There is a typo on the login screen "Passwrod".', type: 'Bug', status: 'Converted to Task', submittedBy: USERS.adrian, submittedAt: 'Feb 08, 2026' }
     ],
     tasks: [
-      { 
-        id: 't1', 
-        title: 'Setup React Project', 
-        description: 'Initialize repository and install dependencies.', 
-        status: TaskStatus.DONE, 
-        priority: Priority.HIGH, 
-        dueDate: '2023-10-01', 
+      {
+        id: 't1',
+        title: 'Setup React Project',
+        description: 'Initialize repository and install dependencies.',
+        status: TaskStatus.DONE,
+        priority: Priority.HIGH,
+        dueDate: '2023-10-01',
         assignee: USERS.harvey,
         team: [{ user: USERS.harvey, isGhost: false }],
         isClientVisible: true,
         timeLogs: { internal: 4, billable: 4 }
       },
-      { 
-        id: 't2', 
-        title: 'Implement Authentication', 
-        description: 'JWT Auth flow with secure storage.', 
-        status: TaskStatus.IN_PROGRESS, 
-        priority: Priority.HIGH, 
-        dueDate: '2023-10-05', 
+      {
+        id: 't2',
+        title: 'Implement Authentication',
+        description: 'JWT Auth flow with secure storage.',
+        status: TaskStatus.IN_PROGRESS,
+        priority: Priority.HIGH,
+        dueDate: '2023-10-05',
         assignee: USERS.super,
         team: [{ user: USERS.super, isGhost: false }, { user: USERS.ghostDev, isGhost: true }],
         isClientVisible: true,
         timeLogs: { internal: 12.5, billable: 10 } // Internal hours higher than billable
       },
-      { 
-        id: 't3', 
-        title: 'Database Schema Optimization', 
-        description: 'Refactoring terrible legacy code in the backend.', 
-        status: TaskStatus.REVIEW, 
-        priority: Priority.MEDIUM, 
+      {
+        id: 't3',
+        title: 'Database Schema Optimization',
+        description: 'Refactoring terrible legacy code in the backend.',
+        status: TaskStatus.REVIEW,
+        priority: Priority.MEDIUM,
         dueDate: '2023-10-10',
         team: [{ user: USERS.ghostDev, isGhost: true }],
         isClientVisible: false, // Internal task only
@@ -75,24 +75,24 @@ export const MOCK_PROJECTS: Project[] = [
     clientName: 'Marketing Dept',
     progress: 30,
     tasks: [
-      { 
-        id: 't4', 
-        title: 'Wireframes', 
-        description: 'Low fidelity mockups', 
-        status: TaskStatus.DONE, 
-        priority: Priority.MEDIUM, 
-        dueDate: '2023-10-15', 
+      {
+        id: 't4',
+        title: 'Wireframes',
+        description: 'Low fidelity mockups',
+        status: TaskStatus.DONE,
+        priority: Priority.MEDIUM,
+        dueDate: '2023-10-15',
         assignee: USERS.harvey,
         team: [{ user: USERS.harvey, isGhost: false }],
         isClientVisible: true,
         timeLogs: { internal: 5, billable: 5 }
       },
-      { 
-        id: 't5', 
-        title: 'Content Strategy', 
-        description: 'Drafting copy', 
-        status: TaskStatus.TODO, 
-        priority: Priority.LOW, 
+      {
+        id: 't5',
+        title: 'Content Strategy',
+        description: 'Drafting copy',
+        status: TaskStatus.TODO,
+        priority: Priority.LOW,
         dueDate: '2023-10-20',
         team: [{ user: USERS.harvey, isGhost: false }],
         isClientVisible: true,
@@ -108,10 +108,11 @@ export const PROJECTS: Project[] = [
   {
     id: 'p1',
     name: 'Alpha Software Requirement hirebase',
+    clientName: 'Alpha Corp',
     type: ProjectType.HIRE_BASE,
     status: 'Not Started',
     ndaSigned: false,
-    projectManager: USERS.super, 
+    projectManager: USERS.super,
     dealId: 'd1',
     addedOn: '09-Feb-2026',
     resources: [
@@ -125,7 +126,8 @@ export const PROJECTS: Project[] = [
   {
     id: 'p2',
     name: 'Alpha Software Requirement Fixed Cost',
-    type: ProjectType.FIXED, 
+    clientName: 'Alpha Corp',
+    type: ProjectType.FIXED,
     status: 'Not Started',
     ndaSigned: false,
     projectManager: USERS.harvey,
@@ -146,7 +148,8 @@ export const PROJECTS: Project[] = [
   {
     id: 'p3',
     name: 'Alpha Enterprise Dev',
-    type: ProjectType.HOURLY, 
+    clientName: 'Alpha Corp',
+    type: ProjectType.HOURLY,
     status: 'Not Started',
     ndaSigned: false,
     projectManager: USERS.super,
@@ -159,8 +162,8 @@ export const PROJECTS: Project[] = [
     initialBoughtHours: 200,
     totalBilledHours: 16.00,
     topUps: [
-      { id: 'tu1', comment: 'New Top-UP', topUpHours: 1000, addedOn: '05-Feb-2026' },
-      { id: 'tu2', comment: 'Initial top-up', topUpHours: 200, addedOn: '05-Feb-2026' },
+      { id: 'tu1', comment: 'New Top-UP', topUpHours: 1000, addedOn: '05-Feb-2026', addedBy: USERS.harvey },
+      { id: 'tu2', comment: 'Initial top-up', topUpHours: 200, addedOn: '05-Feb-2026', addedBy: USERS.harvey },
     ],
     tasks: MOCK_PROJECTS[0].tasks, // Reusing tasks for demo
     clientRequests: MOCK_PROJECTS[0].clientRequests
@@ -212,8 +215,8 @@ export const MESSAGE_BOARDS: MessageBoardThread[] = [
     createdAt: '05-Feb-2026',
     repliesCount: 3,
     replies: [
-        { id: 'r1', author: USERS.super, content: 'Ok Capeesh', createdAt: '05-Feb-2026, 01:59 PM' },
-        { id: 'r2', author: USERS.super, content: 'ok Got it', createdAt: '05-Feb-2026, 02:22 PM' }
+      { id: 'r1', author: USERS.super, content: 'Ok Capeesh', createdAt: '05-Feb-2026, 01:59 PM' },
+      { id: 'r2', author: USERS.super, content: 'ok Got it', createdAt: '05-Feb-2026, 02:22 PM' }
     ]
   },
   {
@@ -252,6 +255,6 @@ export const GROUP_CHAT_MESSAGES: ChatMessage[] = [
 ];
 
 export const DIRECT_CHAT_MESSAGES: ChatMessage[] = [
-    { id: 'dc1', sender: USERS.adrian, content: 'hi', timestamp: '04:25 PM' },
-    { id: 'dc2', sender: USERS.adrian, content: 'How are you', timestamp: '04:25 PM' },
+  { id: 'dc1', sender: USERS.adrian, content: 'hi', timestamp: '04:25 PM' },
+  { id: 'dc2', sender: USERS.adrian, content: 'How are you', timestamp: '04:25 PM' },
 ]

@@ -35,13 +35,19 @@ export interface User {
 // --- Client Portal Specific Types ---
 
 export interface Resource {
-  user: User;
+  user?: User;
   role: string;
   startDate: string;
   endDate?: string;
-  monthlyRate: number;
+  monthlyRate?: number;
   isClientVisible?: boolean; // Defaults to true if undefined
   clientCommunication?: boolean; // Defaults to false
+  // Mock Data Compatibility
+  id?: string;
+  name?: string;
+  avatar?: string;
+  totalWorkingDays?: number;
+  expiresIn?: number;
 }
 
 export interface TopUpLog {
@@ -92,7 +98,8 @@ export interface ClientRequest {
   submittedBy: User;
   submittedAt: string;
   attachments?: number;
-  taskId?: string; // Optional link to an existing task
+  taskId?: string; // Optional link to an existing task (user-selected related task)
+  convertedTaskId?: string; // Task created from this request (system-generated)
   rejectionReason?: string;
   comments?: RequestComment[];
 }
@@ -178,6 +185,9 @@ export interface Project {
   team?: TeamMember[]; // Restored
   clientRequests?: ClientRequest[];
   documents?: ProjectDocument[]; // Restored
+  // Mock Data
+  progress?: number;
+  requiredSkills?: string[];
 }
 
 export interface Deal {

@@ -224,7 +224,8 @@ export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             updateDocument,
             deleteDocument,
             updateClientRequest,
-            deleteClientRequest
+            deleteClientRequest,
+            addTask
         }}>
             {children}
         </SharedDataContext.Provider>

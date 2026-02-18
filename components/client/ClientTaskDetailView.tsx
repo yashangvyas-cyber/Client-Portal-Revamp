@@ -9,11 +9,10 @@ import { USERS } from '../../constants';
 interface ClientTaskDetailViewProps {
     task: Task;
     onClose: () => void;
-    onApprove: (taskId: string) => void;
-    onReject: (taskId: string) => void;
+
 }
 
-export const ClientTaskDetailView: React.FC<ClientTaskDetailViewProps> = ({ task, onClose, onApprove, onReject }) => {
+export const ClientTaskDetailView: React.FC<ClientTaskDetailViewProps> = ({ task, onClose }) => {
     const [activeTab, setActiveTab] = useState<'worklogs' | 'discussion'>('worklogs');
     const [newComment, setNewComment] = useState('');
 
@@ -79,22 +78,7 @@ export const ClientTaskDetailView: React.FC<ClientTaskDetailViewProps> = ({ task
                 </div>
 
                 <div className="flex items-center gap-3">
-                    {isReadyForReview && (
-                        <div className="flex gap-2 animate-pulse-soft">
-                            <button
-                                onClick={() => { onReject(task.id); onClose(); }}
-                                className="bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-md text-xs font-bold hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all flex items-center gap-2"
-                            >
-                                <Ban className="w-3.5 h-3.5" /> Reject
-                            </button>
-                            <button
-                                onClick={() => { onApprove(task.id); onClose(); }}
-                                className="bg-emerald-600 text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-emerald-700 shadow-sm transition-all flex items-center gap-2"
-                            >
-                                <Check className="w-3.5 h-3.5" /> Approve
-                            </button>
-                        </div>
-                    )}
+
                     <div className="h-6 w-px bg-slate-200"></div>
                     <button className="p-2 hover:bg-slate-100 rounded-full text-slate-400">
                         <Paperclip className="w-4 h-4" />
@@ -120,17 +104,7 @@ export const ClientTaskDetailView: React.FC<ClientTaskDetailViewProps> = ({ task
                                 </button>
                             </div>
 
-                            {isReadyForReview && (
-                                <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-6 rounded-r-md">
-                                    <div className="flex items-center gap-3">
-                                        <ShieldCheck className="w-5 h-5 text-amber-600" />
-                                        <div>
-                                            <p className="text-sm font-bold text-amber-900">Ready for QA</p>
-                                            <p className="text-xs text-amber-700 mt-0.5">Please review the acceptance criteria below and approve or reject.</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
+
                         </div>
 
                         {/* Description */}

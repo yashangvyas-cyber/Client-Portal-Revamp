@@ -419,12 +419,6 @@ export const ClientTimesheet: React.FC<ClientTimesheetProps> = ({ project }) => 
                                                 <div>
                                                    <div className="flex items-center gap-2">
                                                       <h5 className="text-sm font-bold text-slate-700 mb-0.5">{log.taskTitle}</h5>
-                                                      {/* Count Badge for Merged Logs */}
-                                                      {(log as any)._count > 1 && (
-                                                         <span className="px-1.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-[9px] font-bold text-slate-500">
-                                                            {(log as any)._count} entries
-                                                         </span>
-                                                      )}
                                                    </div><div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-3">
                                                       {/* Show timestamp in all views */}
                                                       <div className="text-xs font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded w-fit">
