@@ -599,7 +599,19 @@ export const ClientProjectDetail: React.FC<{ project: Project; deals: Deal[]; on
                      {isViewMode && selectedRequest?.status === 'Rejected' && (
                         <div className="bg-red-50 border border-red-100 rounded-xl p-4 mb-2">
                            <h4 className="text-red-800 font-bold text-sm mb-1">Request Rejected</h4>
-                           <p className="text-red-600 text-xs">This request was rejected by the project manager.</p>
+                           <p className="text-red-700 text-xs mb-2 leading-relaxed">
+                              {selectedRequest.rejectionReason || "This request was rejected by the project manager."}
+                           </p>
+                           {selectedRequest.rejectedBy && (
+                              <div className="flex items-center gap-2 mt-3 pt-3 border-t border-red-200/50">
+                                 <div className="w-5 h-5 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-[10px] font-bold border border-red-200">
+                                    {selectedRequest.rejectedBy.name.substring(0, 2)}
+                                 </div>
+                                 <span className="text-[10px] font-bold text-red-600 uppercase tracking-wide">
+                                    Rejected by {selectedRequest.rejectedBy.name}
+                                 </span>
+                              </div>
+                           )}
                         </div>
                      )}
 
@@ -652,7 +664,7 @@ export const ClientProjectDetail: React.FC<{ project: Project; deals: Deal[]; on
                      </div>
 
                      <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Description</label>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Description <span className="text-red-500">*</span></label>
                         <textarea
                            value={newReqDesc}
                            onChange={(e) => setNewReqDesc(e.target.value)}
@@ -711,6 +723,32 @@ export const ClientProjectDetail: React.FC<{ project: Project; deals: Deal[]; on
                            <span className="text-xs font-medium">{isViewMode ? 'No attachments' : 'Attach screenshots or documents'}</span>
                         </div>
                      </div>
+
+                     {/* PM Comments Section - visible in view mode */}
+                     {isViewMode && selectedRequest && (selectedRequest.comments?.length ?? 0) > 0 && (
+                        <div className="pt-4 border-t border-slate-100">
+                           <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                              <MessageSquare className="w-3.5 h-3.5" /> Updates from Project Manager
+                           </h4>
+                           <div className="space-y-3">
+                              {selectedRequest.comments!.map(comment => (
+                                 <div key={comment.id} className="flex gap-3">
+                                    <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px] font-bold shrink-0">
+                                       {comment.author.name.substring(0, 2).toUpperCase()}
+                                    </div>
+                                    <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3 flex-1">
+                                       <div className="flex justify-between items-center mb-1">
+                                          <span className="text-xs font-bold text-indigo-800">{comment.author.name}</span>
+                                          <span className="text-[10px] text-slate-400">{comment.createdAt}</span>
+                                       </div>
+                                       <p className="text-sm text-slate-700">{comment.content}</p>
+                                    </div>
+                                 </div>
+                              ))}
+                           </div>
+                        </div>
+                     )}
+
                   </div>
 
                   {/* Footer Actions */}
@@ -796,605 +834,617 @@ export const ClientProjectDetail: React.FC<{ project: Project; deals: Deal[]; on
          </div>
 
          {/* --- 1. OVERVIEW TAB --- */}
-         {activeTab === 'dashboard' && (
-            <>
-               {project.type === ProjectType.HIRE_BASE && <HirebaseOverview project={project} />}
-               {project.type === ProjectType.HOURLY && <HourlyOverview project={project} />}
-               {project.type === ProjectType.FIXED && <FixedOverview project={project} />}
-            </>
-         )}
+         {
+            activeTab === 'dashboard' && (
+               <>
+                  {project.type === ProjectType.HIRE_BASE && <HirebaseOverview project={project} />}
+                  {project.type === ProjectType.HOURLY && <HourlyOverview project={project} />}
+                  {project.type === ProjectType.FIXED && <FixedOverview project={project} />}
+               </>
+            )
+         }
 
          {/* --- 2. TEAM TAB --- */}
-         {activeTab === 'team' && (
-            <ClientTeam project={project} onMessageUser={onMessageUser} />
-         )}
+         {
+            activeTab === 'team' && (
+               <ClientTeam project={project} onMessageUser={onMessageUser} />
+            )
+         }
 
          {/* --- 3. PROJECT TASKS TAB --- */}
-         {activeTab === 'work_board' && (
-            <div className="flex flex-col h-full space-y-4">
-               {/* Work Board Controls */}
-               <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-                  <div className="flex items-center gap-3">
-                     <div className="flex bg-slate-100 p-1 rounded-lg">
-                        <button
-                           onClick={() => setWorkBoardView('board')}
-                           className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${workBoardView === 'board' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'} `}
+         {
+            activeTab === 'work_board' && (
+               <div className="flex flex-col h-full space-y-4">
+                  {/* Work Board Controls */}
+                  <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                     <div className="flex items-center gap-3">
+                        <div className="flex bg-slate-100 p-1 rounded-lg">
+                           <button
+                              onClick={() => setWorkBoardView('board')}
+                              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${workBoardView === 'board' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'} `}
+                           >
+                              Board
+                           </button>
+                           <button
+                              onClick={() => setWorkBoardView('list')}
+                              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${workBoardView === 'list' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'} `}
+                           >
+                              List
+                           </button>
+                        </div>
+                        <div className="h-6 w-px bg-slate-200"></div>
+                        <select
+                           value={workBoardFilter}
+                           onChange={(e) => setWorkBoardFilter(e.target.value as any)}
+                           className="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                         >
-                           Board
-                        </button>
-                        <button
-                           onClick={() => setWorkBoardView('list')}
-                           className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${workBoardView === 'list' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'} `}
-                        >
-                           List
-                        </button>
+                           <option value="none">None</option>
+                           <option value="current_sprint">Current Sprint</option>
+                           <option value="backlog">Backlog</option>
+                           <option value="past_sprints">Past Sprints</option>
+                        </select>
                      </div>
-                     <div className="h-6 w-px bg-slate-200"></div>
-                     <select
-                        value={workBoardFilter}
-                        onChange={(e) => setWorkBoardFilter(e.target.value as any)}
-                        className="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                     >
-                        <option value="none">None</option>
-                        <option value="current_sprint">Current Sprint</option>
-                        <option value="backlog">Backlog</option>
-                        <option value="past_sprints">Past Sprints</option>
-                     </select>
                   </div>
-               </div>
 
-               {/* Content Area */}
-               {workBoardView === 'board' && (
-                  <div className="flex-1 overflow-x-auto pb-4">
-                     <div className="flex gap-6 min-w-max h-full">
-                        {kanbanColumns.map(column => {
-                           const columnTasks = tasks.filter(t => t.status === column.id && t.isClientVisible);
-                           return (
-                              <div key={column.id} className="w-[340px] flex flex-col h-full">
-                                 {/* Column Header */}
-                                 <div className={`flex items-center justify-between mb-4 px-4 py-3 rounded-xl border ${column.color} `}>
-                                    <div className="flex items-center gap-2">
-                                       <div className={`w-2 h-2 rounded-full ${column.id === TaskStatus.DONE ? 'bg-emerald-500' : column.id === TaskStatus.REVIEW ? 'bg-amber-500' : column.id === TaskStatus.IN_PROGRESS ? 'bg-blue-500' : 'bg-slate-400'} `}></div>
-                                       <h3 className="font-bold text-slate-800 text-sm">{column.title}</h3>
+                  {/* Content Area */}
+                  {workBoardView === 'board' && (
+                     <div className="flex-1 overflow-x-auto pb-4">
+                        <div className="flex gap-6 min-w-max h-full">
+                           {kanbanColumns.map(column => {
+                              const columnTasks = tasks.filter(t => t.status === column.id && t.isClientVisible);
+                              return (
+                                 <div key={column.id} className="w-[340px] flex flex-col h-full">
+                                    {/* Column Header */}
+                                    <div className={`flex items-center justify-between mb-4 px-4 py-3 rounded-xl border ${column.color} `}>
+                                       <div className="flex items-center gap-2">
+                                          <div className={`w-2 h-2 rounded-full ${column.id === TaskStatus.DONE ? 'bg-emerald-500' : column.id === TaskStatus.REVIEW ? 'bg-amber-500' : column.id === TaskStatus.IN_PROGRESS ? 'bg-blue-500' : 'bg-slate-400'} `}></div>
+                                          <h3 className="font-bold text-slate-800 text-sm">{column.title}</h3>
+                                       </div>
+                                       <span className="bg-white/50 px-2 py-0.5 rounded-md text-xs font-bold text-slate-600">{columnTasks.length}</span>
                                     </div>
-                                    <span className="bg-white/50 px-2 py-0.5 rounded-md text-xs font-bold text-slate-600">{columnTasks.length}</span>
-                                 </div>
 
-                                 {/* Tasks Area */}
-                                 <div className="flex-1 space-y-3">
-                                    {columnTasks.map(task => (
-                                       <div
-                                          key={task.id}
-                                          onClick={() => setSelectedTaskForDetail(task.id)}
-                                          className={`bg-white p-4 rounded-xl border shadow-sm hover: shadow-md transition-all group relative cursor-pointer border-slate-200`}
-                                       >
-                                          {/* Header Status/Priority */}
-                                          <div className="flex justify-between items-start mb-2">
-                                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${task.priority === 'HIGH' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-slate-50 text-slate-600 border-slate-100'
-                                                } `}>
-                                                {task.priority}
-                                             </span>
-                                             {task.timeLogs?.billable > 0 && (
-                                                <span className="text-[10px] font-bold text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
-                                                   {task.timeLogs.billable}h Billed
+                                    {/* Tasks Area */}
+                                    <div className="flex-1 space-y-3">
+                                       {columnTasks.map(task => (
+                                          <div
+                                             key={task.id}
+                                             onClick={() => setSelectedTaskForDetail(task.id)}
+                                             className={`bg-white p-4 rounded-xl border shadow-sm hover: shadow-md transition-all group relative cursor-pointer border-slate-200`}
+                                          >
+                                             {/* Header Status/Priority */}
+                                             <div className="flex justify-between items-start mb-2">
+                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${task.priority === 'HIGH' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-slate-50 text-slate-600 border-slate-100'
+                                                   } `}>
+                                                   {task.priority}
                                                 </span>
-                                             )}
-                                          </div>
-
-                                          <h4 className="font-bold text-slate-800 mb-1 leading-snug group-hover:text-indigo-600 transition-colors">{task.title}</h4>
-                                          <p className="text-xs text-slate-500 line-clamp-2 mb-4">{task.description}</p>
-
-                                          {/* Approvals Action Area (Visible in Kanban, but also in Modal) */}
-
-
-                                          <div className="flex items-center justify-between pt-3 border-t border-slate-50">
-                                             {/* Sanitized Team View */}
-                                             <div className="flex -space-x-2">
-                                                {task.team?.filter(m => !m.isGhost).map((member, idx) => (
-                                                   <img key={idx} src={member.user.avatar || "https://i.pravatar.cc/150"} className="w-6 h-6 rounded-full border border-white shadow-sm" title={member.user.name} />
-                                                ))}
-                                                {(!task.team || task.team.filter(m => !m.isGhost).length === 0) && (
-                                                   <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[8px] font-bold text-slate-400 border border-slate-200">Team</div>
+                                                {task.timeLogs?.billable > 0 && (
+                                                   <span className="text-[10px] font-bold text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
+                                                      {task.timeLogs.billable}h Billed
+                                                   </span>
                                                 )}
                                              </div>
-                                             <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase">
-                                                <Calendar className="w-3 h-3" /> {task.dueDate}
+
+                                             <h4 className="font-bold text-slate-800 mb-1 leading-snug group-hover:text-indigo-600 transition-colors">{task.title}</h4>
+                                             <p className="text-xs text-slate-500 line-clamp-2 mb-4">{task.description}</p>
+
+                                             {/* Approvals Action Area (Visible in Kanban, but also in Modal) */}
+
+
+                                             <div className="flex items-center justify-between pt-3 border-t border-slate-50">
+                                                {/* Sanitized Team View */}
+                                                <div className="flex -space-x-2">
+                                                   {task.team?.filter(m => !m.isGhost).map((member, idx) => (
+                                                      <img key={idx} src={member.user.avatar || "https://i.pravatar.cc/150"} className="w-6 h-6 rounded-full border border-white shadow-sm" title={member.user.name} />
+                                                   ))}
+                                                   {(!task.team || task.team.filter(m => !m.isGhost).length === 0) && (
+                                                      <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[8px] font-bold text-slate-400 border border-slate-200">Team</div>
+                                                   )}
+                                                </div>
+                                                <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase">
+                                                   <Calendar className="w-3 h-3" /> {task.dueDate}
+                                                </div>
                                              </div>
                                           </div>
-                                       </div>
-                                    ))}
+                                       ))}
+                                    </div>
                                  </div>
-                              </div>
-                           );
-                        })}
+                              );
+                           })}
+                        </div>
+                     </div>
+                  )}
+
+                  {workBoardView === 'list' && (
+                     <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                        <table className="w-full">
+                           <thead className="bg-slate-50 border-b border-slate-200">
+                              <tr>
+                                 <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">ID</th>
+                                 <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Title</th>
+                                 <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Status</th>
+                                 <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Priority</th>
+                                 <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Team</th>
+                                 <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Due Date</th>
+                                 <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Actions</th>
+                              </tr>
+                           </thead>
+                           <tbody className="divide-y divide-slate-100">
+                              {tasks.filter(t => t.isClientVisible).length > 0 ? (
+                                 tasks.filter(t => t.isClientVisible).map((task) => (
+                                    <tr key={task.id} className="hover:bg-slate-50 transition-colors">
+                                       <td className="px-4 py-3">
+                                          <div className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded border border-indigo-100 inline-block">
+                                             {task.id}
+                                          </div>
+                                       </td>
+                                       <td className="px-4 py-3">
+                                          <div className="text-sm font-medium text-slate-800">{task.title}</div>
+                                       </td>
+                                       <td className="px-4 py-3">
+                                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${task.status === TaskStatus.TODO ? 'bg-blue-100 text-blue-700 border border-blue-200' :
+                                             task.status === TaskStatus.IN_PROGRESS ? 'bg-orange-100 text-orange-700 border border-orange-200' :
+                                                task.status === TaskStatus.REVIEW ? 'bg-purple-100 text-purple-700 border border-purple-200' :
+                                                   'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                                             }`}>
+                                             {task.status === TaskStatus.TODO ? 'Up Next' :
+                                                task.status === TaskStatus.IN_PROGRESS ? 'In Progress' :
+                                                   task.status === TaskStatus.REVIEW ? 'Ready for Review' :
+                                                      'Completed'}
+                                          </span>
+                                       </td>
+                                       <td className="px-4 py-3">
+                                          <div className="flex items-center gap-1.5">
+                                             <div className={`w-2 h-2 rounded-full ${task.priority === Priority.HIGH ? 'bg-red-500' :
+                                                task.priority === Priority.MEDIUM ? 'bg-yellow-500' :
+                                                   'bg-blue-500'
+                                                }`}></div>
+                                             <span className="text-xs font-medium text-slate-600">
+                                                {task.priority === Priority.HIGH ? 'High' :
+                                                   task.priority === Priority.MEDIUM ? 'Medium' :
+                                                      'Low'}
+                                             </span>
+                                          </div>
+                                       </td>
+                                       <td className="px-4 py-3">
+                                          <div className="flex -space-x-1">
+                                             {task.team?.filter(m => !m.isGhost).map((member, i) => (
+                                                <div
+                                                   key={i}
+                                                   className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-[10px] font-bold border-2 border-white shadow-sm"
+                                                   title={member.user.name}
+                                                >
+                                                   {member.user.name.substring(0, 2).toUpperCase()}
+                                                </div>
+                                             ))}
+                                             {(!task.team || task.team.filter(m => !m.isGhost).length === 0) && (
+                                                <span className="text-xs text-slate-400">Unassigned</span>
+                                             )}
+                                          </div>
+                                       </td>
+                                       <td className="px-4 py-3">
+                                          <span className="text-xs text-slate-600">{task.dueDate || 'No due date'}</span>
+                                       </td>
+                                       <td className="px-4 py-3">
+                                          <button
+                                             onClick={() => setSelectedTaskForDetail(task.id)}
+                                             className="text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
+                                          >
+                                             View
+                                          </button>
+                                       </td>
+                                    </tr>
+                                 ))
+                              ) : (
+                                 <tr>
+                                    <td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-400">
+                                       No tasks found
+                                    </td>
+                                 </tr>
+                              )}
+                           </tbody>
+                        </table>
+                     </div>
+                  )}
+               </div>
+            )
+         }
+
+         {/* --- 4. UTILIZATION TAB --- */}
+         {
+            activeTab === 'utilization' && (
+               <ClientTimesheet project={project} />
+            )
+         }
+
+         {/* --- 5. DOCUMENTS TAB --- */}
+         {
+            activeTab === 'documents' && (
+               <div className="space-y-8 animate-fade-in">
+
+                  {/* Search & Filter (Visual only for now) */}
+                  <div className="flex justify-between items-center mb-6">
+                     <div>
+                        <h3 className="font-bold text-slate-800 text-xl">Documents & Assets</h3>
+                        <p className="text-sm text-slate-500">Access your contracts, invoices, and brand assets.</p>
+                     </div>
+                     <div className="relative w-64">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input type="text" placeholder="Search files..." className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm shadow-sm focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-all" />
                      </div>
                   </div>
-               )}
 
-               {workBoardView === 'list' && (
-                  <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-                     <table className="w-full">
-                        <thead className="bg-slate-50 border-b border-slate-200">
-                           <tr>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">ID</th>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Title</th>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Status</th>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Priority</th>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Team</th>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Due Date</th>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Actions</th>
-                           </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                           {tasks.filter(t => t.isClientVisible).length > 0 ? (
-                              tasks.filter(t => t.isClientVisible).map((task) => (
-                                 <tr key={task.id} className="hover:bg-slate-50 transition-colors">
-                                    <td className="px-4 py-3">
-                                       <div className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded border border-indigo-100 inline-block">
-                                          {task.id}
+                  {/* UNIFIED DOCUMENTS SECTION */}
+                  <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                     <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+                        <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                           <FileText className="w-5 h-5" />
+                        </div>
+                        <div>
+                           <h4 className="font-bold text-slate-800">Project Documents</h4>
+                           <p className="text-xs text-slate-500">All shared contracts, invoices, assets, and files</p>
+                        </div>
+                     </div>
+
+                     {project.documents?.filter(d => d.isClientVisible).length === 0 ? (
+                        <div className="p-8 text-center text-slate-400 text-sm italic">No documents shared with you yet.</div>
+                     ) : (
+                        <table className="w-full text-left">
+                           <thead className="bg-slate-50 border-b border-slate-100">
+                              <tr>
+                                 <th className="px-6 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Document Name</th>
+                                 <th className="px-6 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Type</th>
+                                 <th className="px-6 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Date</th>
+                                 <th className="px-6 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">Download</th>
+                              </tr>
+                           </thead>
+                           <tbody className="divide-y divide-slate-100">
+                              {project.documents?.filter(d => d.isClientVisible).map(doc => (
+                                 <tr key={doc.id} className="hover:bg-slate-50 transition-colors group">
+                                    <td className="px-6 py-4">
+                                       <div className="flex items-center gap-3">
+                                          <div className={`w-8 h-8 rounded flex items-center justify-center ${doc.category === 'ASSET_LIBRARY' ? 'bg-purple-100 text-purple-600' : 'bg-slate-100 text-slate-500'} `}>
+                                             {doc.category === 'ASSET_LIBRARY' ? <Image className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+                                          </div>
+                                          <div>
+                                             <div className="text-sm font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">{doc.name}</div>
+                                             {doc.comments && <div className="text-[10px] text-slate-400 max-w-xs truncate">{doc.comments}</div>}
+                                          </div>
                                        </div>
                                     </td>
-                                    <td className="px-4 py-3">
-                                       <div className="text-sm font-medium text-slate-800">{task.title}</div>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${task.status === TaskStatus.TODO ? 'bg-blue-100 text-blue-700 border border-blue-200' :
-                                          task.status === TaskStatus.IN_PROGRESS ? 'bg-orange-100 text-orange-700 border border-orange-200' :
-                                             task.status === TaskStatus.REVIEW ? 'bg-purple-100 text-purple-700 border border-purple-200' :
-                                                'bg-emerald-100 text-emerald-700 border border-emerald-200'
-                                          }`}>
-                                          {task.status === TaskStatus.TODO ? 'Up Next' :
-                                             task.status === TaskStatus.IN_PROGRESS ? 'In Progress' :
-                                                task.status === TaskStatus.REVIEW ? 'Ready for Review' :
-                                                   'Completed'}
+                                    <td className="px-6 py-4">
+                                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200 uppercase tracking-wide">
+                                          {doc.type}
                                        </span>
                                     </td>
-                                    <td className="px-4 py-3">
-                                       <div className="flex items-center gap-1.5">
-                                          <div className={`w-2 h-2 rounded-full ${task.priority === Priority.HIGH ? 'bg-red-500' :
-                                             task.priority === Priority.MEDIUM ? 'bg-yellow-500' :
-                                                'bg-blue-500'
-                                             }`}></div>
-                                          <span className="text-xs font-medium text-slate-600">
-                                             {task.priority === Priority.HIGH ? 'High' :
-                                                task.priority === Priority.MEDIUM ? 'Medium' :
-                                                   'Low'}
-                                          </span>
-                                       </div>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                       <div className="flex -space-x-1">
-                                          {task.team?.filter(m => !m.isGhost).map((member, i) => (
-                                             <div
-                                                key={i}
-                                                className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-[10px] font-bold border-2 border-white shadow-sm"
-                                                title={member.user.name}
-                                             >
-                                                {member.user.name.substring(0, 2).toUpperCase()}
-                                             </div>
-                                          ))}
-                                          {(!task.team || task.team.filter(m => !m.isGhost).length === 0) && (
-                                             <span className="text-xs text-slate-400">Unassigned</span>
-                                          )}
-                                       </div>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                       <span className="text-xs text-slate-600">{task.dueDate || 'No due date'}</span>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                       <button
-                                          onClick={() => setSelectedTaskForDetail(task.id)}
-                                          className="text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
-                                       >
-                                          View
+                                    <td className="px-6 py-4 text-xs font-medium text-slate-500">{doc.uploadedAt}</td>
+                                    <td className="px-6 py-4 text-right">
+                                       <button className="text-slate-400 hover:text-indigo-600 transition-colors">
+                                          <Download className="w-4 h-4" />
                                        </button>
                                     </td>
                                  </tr>
-                              ))
-                           ) : (
-                              <tr>
-                                 <td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-400">
-                                    No tasks found
-                                 </td>
-                              </tr>
-                           )}
-                        </tbody>
-                     </table>
-                  </div>
-               )}
-            </div>
-         )}
-
-         {/* --- 4. UTILIZATION TAB --- */}
-         {activeTab === 'utilization' && (
-            <ClientTimesheet project={project} />
-         )}
-
-         {/* --- 5. DOCUMENTS TAB --- */}
-         {activeTab === 'documents' && (
-            <div className="space-y-8 animate-fade-in">
-
-               {/* Search & Filter (Visual only for now) */}
-               <div className="flex justify-between items-center mb-6">
-                  <div>
-                     <h3 className="font-bold text-slate-800 text-xl">Documents & Assets</h3>
-                     <p className="text-sm text-slate-500">Access your contracts, invoices, and brand assets.</p>
-                  </div>
-                  <div className="relative w-64">
-                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                     <input type="text" placeholder="Search files..." className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm shadow-sm focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-all" />
+                              ))}
+                           </tbody>
+                        </table>
+                     )}
                   </div>
                </div>
-
-               {/* UNIFIED DOCUMENTS SECTION */}
-               <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                  <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
-                     <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
-                        <FileText className="w-5 h-5" />
-                     </div>
-                     <div>
-                        <h4 className="font-bold text-slate-800">Project Documents</h4>
-                        <p className="text-xs text-slate-500">All shared contracts, invoices, assets, and files</p>
-                     </div>
-                  </div>
-
-                  {project.documents?.filter(d => d.isClientVisible).length === 0 ? (
-                     <div className="p-8 text-center text-slate-400 text-sm italic">No documents shared with you yet.</div>
-                  ) : (
-                     <table className="w-full text-left">
-                        <thead className="bg-slate-50 border-b border-slate-100">
-                           <tr>
-                              <th className="px-6 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Document Name</th>
-                              <th className="px-6 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Type</th>
-                              <th className="px-6 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Date</th>
-                              <th className="px-6 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">Download</th>
-                           </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                           {project.documents?.filter(d => d.isClientVisible).map(doc => (
-                              <tr key={doc.id} className="hover:bg-slate-50 transition-colors group">
-                                 <td className="px-6 py-4">
-                                    <div className="flex items-center gap-3">
-                                       <div className={`w-8 h-8 rounded flex items-center justify-center ${doc.category === 'ASSET_LIBRARY' ? 'bg-purple-100 text-purple-600' : 'bg-slate-100 text-slate-500'} `}>
-                                          {doc.category === 'ASSET_LIBRARY' ? <Image className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
-                                       </div>
-                                       <div>
-                                          <div className="text-sm font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">{doc.name}</div>
-                                          {doc.comments && <div className="text-[10px] text-slate-400 max-w-xs truncate">{doc.comments}</div>}
-                                       </div>
-                                    </div>
-                                 </td>
-                                 <td className="px-6 py-4">
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200 uppercase tracking-wide">
-                                       {doc.type}
-                                    </span>
-                                 </td>
-                                 <td className="px-6 py-4 text-xs font-medium text-slate-500">{doc.uploadedAt}</td>
-                                 <td className="px-6 py-4 text-right">
-                                    <button className="text-slate-400 hover:text-indigo-600 transition-colors">
-                                       <Download className="w-4 h-4" />
-                                    </button>
-                                 </td>
-                              </tr>
-                           ))}
-                        </tbody>
-                     </table>
-                  )}
-               </div>
-            </div>
-         )}
+            )
+         }
 
          {/* --- 6. MY REQUESTS TAB --- */}
-         {activeTab === 'change_requests' && (
-            <div className="space-y-6 max-w-5xl mx-auto w-full">
-               <div className="flex justify-between items-center bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                  <div>
-                     <h3 className="font-bold text-slate-800">My Requests</h3>
-                     <p className="text-xs text-slate-500">Track status of your bug reports and feature requests</p>
+         {
+            activeTab === 'change_requests' && (
+               <div className="space-y-6 max-w-5xl mx-auto w-full">
+                  <div className="flex justify-between items-center bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                     <div>
+                        <h3 className="font-bold text-slate-800">My Requests</h3>
+                        <p className="text-xs text-slate-500">Track status of your bug reports and feature requests</p>
+                     </div>
+                     <button
+                        onClick={() => setIsRequestModalOpen(true)}
+                        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-indigo-200 transition-all"
+                     >
+                        <PlusCircle className="w-5 h-5" /> New Request
+                     </button>
                   </div>
-                  <button
-                     onClick={() => setIsRequestModalOpen(true)}
-                     className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-indigo-200 transition-all"
-                  >
-                     <PlusCircle className="w-5 h-5" /> New Request
-                  </button>
-               </div>
 
-               {/* Filter - Chip-based sequential popup bar */}
-               <div className="bg-white border border-slate-200 rounded-xl shadow-sm relative">
-                  {/* Filter bar - shows chips + placeholder */}
-                  <div
-                     className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] cursor-text flex-wrap"
-                     onClick={() => { if (!filterStep && !isFilterActive) setFilterStep('field'); }}
-                  >
-                     <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  {/* Filter - Chip-based sequential popup bar */}
+                  <div className="bg-white border border-slate-200 rounded-xl shadow-sm relative">
+                     {/* Filter bar - shows chips + placeholder */}
+                     <div
+                        className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] cursor-text flex-wrap"
+                        onClick={() => { if (!filterStep && !isFilterActive) setFilterStep('field'); }}
+                     >
+                        <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
 
-                     {/* Field chip */}
-                     {filterField && (
-                        <button
-                           onClick={(e) => { e.stopPropagation(); setFilterStep('field'); }}
-                           className="flex items-center gap-1 px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-medium text-slate-700 hover:bg-slate-200 transition-colors"
-                        >
-                           {filterFields.find(f => f.value === filterField)?.icon}
-                           <span>{filterFields.find(f => f.value === filterField)?.label}</span>
-                        </button>
-                     )}
-
-                     {/* Operator chip - for all fields */}
-                     {filterField && filterOperator && (
-                        <button
-                           onClick={(e) => { e.stopPropagation(); setFilterStep('operator'); }}
-                           className="flex items-center px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors"
-                        >
-                           {filterOperator.charAt(0).toUpperCase() + filterOperator.slice(1)}
-                        </button>
-                     )}
-
-                     {/* Value chip / input */}
-                     {filterStep === 'value' && filterField !== 'status' && filterField !== 'priority' ? (
-                        filterField === 'type' ? (
-                           <select
-                              autoFocus
-                              value={filterValue}
-                              onChange={(e) => {
-                                 setFilterValue(e.target.value);
-                                 if (e.target.value) { setIsFilterActive(true); setFilterStep(null); }
-                              }}
-                              className="text-xs border-0 outline-none bg-transparent text-slate-700 cursor-pointer"
-                              onClick={(e) => e.stopPropagation()}
+                        {/* Field chip */}
+                        {filterField && (
+                           <button
+                              onClick={(e) => { e.stopPropagation(); setFilterStep('field'); }}
+                              className="flex items-center gap-1 px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-medium text-slate-700 hover:bg-slate-200 transition-colors"
                            >
-                              <option value="">Select...</option>
-                              <option value="bug">Bug</option>
-                              <option value="feature">Feature</option>
-                              <option value="feedback">Feedback</option>
-                           </select>
-                        ) : filterField === 'date' ? (
-                           <input
-                              autoFocus
-                              type="date"
-                              value={filterValue}
-                              onChange={(e) => setFilterValue(e.target.value)}
-                              onBlur={() => { if (filterValue) { setIsFilterActive(true); setFilterStep(null); } }}
-                              className="text-xs border-0 outline-none bg-transparent text-slate-700 w-32"
-                              onClick={(e) => e.stopPropagation()}
-                           />
-                        ) : (
-                           <input
-                              autoFocus
-                              type="text"
-                              value={filterValue}
-                              onChange={(e) => setFilterValue(e.target.value)}
-                              onKeyDown={(e) => {
-                                 if (e.key === 'Enter' && filterValue) { setIsFilterActive(true); setFilterStep(null); }
-                                 if (e.key === 'Escape') clearFilter();
-                              }}
-                              onBlur={() => { if (filterValue) { setIsFilterActive(true); setFilterStep(null); } }}
-                              placeholder="Type and press Enter..."
-                              className="text-xs border-0 outline-none bg-transparent text-slate-700 placeholder-slate-400 min-w-[120px]"
-                              onClick={(e) => e.stopPropagation()}
-                           />
-                        )
-                     ) : isFilterActive && filterValue && filterField !== 'status' && filterField !== 'priority' ? (
-                        <button
-                           onClick={(e) => { e.stopPropagation(); setFilterStep('value'); }}
-                           className="flex items-center px-2 py-0.5 bg-indigo-50 border border-indigo-200 rounded text-xs font-medium text-indigo-700 hover:bg-indigo-100 transition-colors"
-                        >
-                           {filterValue}
-                        </button>
-                     ) : isFilterActive && (filterField === 'status' || filterField === 'priority') ? (
-                        <button
-                           onClick={(e) => { e.stopPropagation(); setFilterStep('value'); }}
-                           className="flex items-center px-2 py-0.5 bg-indigo-50 border border-indigo-200 rounded text-xs font-medium text-indigo-700 hover:bg-indigo-100 transition-colors"
-                        >
-                           {filterField === 'status' ? `${selectedStatuses.length} selected` : `${selectedPriorities.length} selected`}
-                        </button>
-                     ) : !filterField ? (
-                        <span className="text-sm text-slate-400">Filter Results...</span>
-                     ) : null}
+                              {filterFields.find(f => f.value === filterField)?.icon}
+                              <span>{filterFields.find(f => f.value === filterField)?.label}</span>
+                           </button>
+                        )}
 
-                     {/* Clear button */}
-                     {(filterField || isFilterActive) && (
-                        <button
-                           onClick={(e) => { e.stopPropagation(); clearFilter(); }}
-                           className="ml-auto flex-shrink-0 text-slate-400 hover:text-slate-600 transition-colors"
-                        >
-                           <X className="w-3.5 h-3.5" />
-                        </button>
-                     )}
-                  </div>
+                        {/* Operator chip - for all fields */}
+                        {filterField && filterOperator && (
+                           <button
+                              onClick={(e) => { e.stopPropagation(); setFilterStep('operator'); }}
+                              className="flex items-center px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors"
+                           >
+                              {filterOperator.charAt(0).toUpperCase() + filterOperator.slice(1)}
+                           </button>
+                        )}
 
-                  {/* POPUP 1: Field selector */}
-                  {filterStep === 'field' && (
-                     <>
-                        <div className="fixed inset-0 z-40" onClick={() => setFilterStep(null)} />
-                        <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1 overflow-hidden">
-                           {filterFields.map(field => (
-                              <button
-                                 key={field.value}
-                                 onClick={() => {
-                                    setFilterField(field.value as any);
-                                    setFilterValue('');
-                                    setSelectedStatuses([]);
-                                    setSelectedPriorities([]);
-                                    setIsFilterActive(false);
-                                    setFilterOperator(null);
-                                    // Always go to operator step first
-                                    setFilterStep('operator');
+                        {/* Value chip / input */}
+                        {filterStep === 'value' && filterField !== 'status' && filterField !== 'priority' ? (
+                           filterField === 'type' ? (
+                              <select
+                                 autoFocus
+                                 value={filterValue}
+                                 onChange={(e) => {
+                                    setFilterValue(e.target.value);
+                                    if (e.target.value) { setIsFilterActive(true); setFilterStep(null); }
                                  }}
-                                 className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left"
+                                 className="text-xs border-0 outline-none bg-transparent text-slate-700 cursor-pointer"
+                                 onClick={(e) => e.stopPropagation()}
                               >
-                                 {field.icon}
-                                 <span>{field.label}</span>
-                              </button>
-                           ))}
-                        </div>
-                     </>
-                  )}
-
-                  {/* POPUP 2: Operator selector */}
-                  {filterStep === 'operator' && filterField && (
-                     <>
-                        <div className="fixed inset-0 z-40" onClick={() => setFilterStep(null)} />
-                        <div className="absolute top-full left-0 mt-1 w-36 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1 overflow-hidden">
-                           {getOperators().map(op => (
-                              <button
-                                 key={op.value}
-                                 onClick={() => {
-                                    setFilterOperator(op.value as any);
-                                    setFilterStep('value');
+                                 <option value="">Select...</option>
+                                 <option value="bug">Bug</option>
+                                 <option value="feature">Feature</option>
+                                 <option value="feedback">Feedback</option>
+                              </select>
+                           ) : filterField === 'date' ? (
+                              <input
+                                 autoFocus
+                                 type="date"
+                                 value={filterValue}
+                                 onChange={(e) => setFilterValue(e.target.value)}
+                                 onBlur={() => { if (filterValue) { setIsFilterActive(true); setFilterStep(null); } }}
+                                 className="text-xs border-0 outline-none bg-transparent text-slate-700 w-32"
+                                 onClick={(e) => e.stopPropagation()}
+                              />
+                           ) : (
+                              <input
+                                 autoFocus
+                                 type="text"
+                                 value={filterValue}
+                                 onChange={(e) => setFilterValue(e.target.value)}
+                                 onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && filterValue) { setIsFilterActive(true); setFilterStep(null); }
+                                    if (e.key === 'Escape') clearFilter();
                                  }}
-                                 className="w-full flex items-center px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left"
-                              >
-                                 {op.label}
-                              </button>
-                           ))}
-                        </div>
-                     </>
-                  )}
+                                 onBlur={() => { if (filterValue) { setIsFilterActive(true); setFilterStep(null); } }}
+                                 placeholder="Type and press Enter..."
+                                 className="text-xs border-0 outline-none bg-transparent text-slate-700 placeholder-slate-400 min-w-[120px]"
+                                 onClick={(e) => e.stopPropagation()}
+                              />
+                           )
+                        ) : isFilterActive && filterValue && filterField !== 'status' && filterField !== 'priority' ? (
+                           <button
+                              onClick={(e) => { e.stopPropagation(); setFilterStep('value'); }}
+                              className="flex items-center px-2 py-0.5 bg-indigo-50 border border-indigo-200 rounded text-xs font-medium text-indigo-700 hover:bg-indigo-100 transition-colors"
+                           >
+                              {filterValue}
+                           </button>
+                        ) : isFilterActive && (filterField === 'status' || filterField === 'priority') ? (
+                           <button
+                              onClick={(e) => { e.stopPropagation(); setFilterStep('value'); }}
+                              className="flex items-center px-2 py-0.5 bg-indigo-50 border border-indigo-200 rounded text-xs font-medium text-indigo-700 hover:bg-indigo-100 transition-colors"
+                           >
+                              {filterField === 'status' ? `${selectedStatuses.length} selected` : `${selectedPriorities.length} selected`}
+                           </button>
+                        ) : !filterField ? (
+                           <span className="text-sm text-slate-400">Filter Results...</span>
+                        ) : null}
 
-                  {/* POPUP 3: Value selector for Status/Priority (multi-select) */}
-                  {filterStep === 'value' && (filterField === 'status' || filterField === 'priority') && (
-                     <>
-                        <div className="fixed inset-0 z-40" onClick={() => { setIsFilterActive(filterField === 'status' ? selectedStatuses.length > 0 : selectedPriorities.length > 0); setFilterStep(null); }} />
-                        <div className="absolute top-full left-0 mt-1 w-56 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
-                           <div className="max-h-64 overflow-y-auto py-1">
-                              {filterField === 'status' ? [
-                                 'Pending', 'Reviewing', 'Converted To Task', 'Rejected',
-                                 'Acknowledged', 'Under Consideration', 'Implemented',
-                                 'Not Planned', 'Resolved', 'Duplicate', 'Cannot Reproduce'
-                              ].map(status => (
-                                 <label key={status} className="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 cursor-pointer">
-                                    <input
-                                       type="checkbox"
-                                       checked={selectedStatuses.includes(status.toLowerCase())}
-                                       onChange={(e) => {
-                                          if (e.target.checked) setSelectedStatuses([...selectedStatuses, status.toLowerCase()]);
-                                          else setSelectedStatuses(selectedStatuses.filter(s => s !== status.toLowerCase()));
-                                       }}
-                                       className="w-4 h-4 text-indigo-600 border-slate-300 rounded"
-                                    />
-                                    <span className="text-sm text-slate-700">{status}</span>
-                                 </label>
-                              )) : ['Low', 'Medium', 'High', 'Critical'].map(priority => (
-                                 <label key={priority} className="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 cursor-pointer">
-                                    <input
-                                       type="checkbox"
-                                       checked={selectedPriorities.includes(priority.toLowerCase())}
-                                       onChange={(e) => {
-                                          if (e.target.checked) setSelectedPriorities([...selectedPriorities, priority.toLowerCase()]);
-                                          else setSelectedPriorities(selectedPriorities.filter(p => p !== priority.toLowerCase()));
-                                       }}
-                                       className="w-4 h-4 text-indigo-600 border-slate-300 rounded"
-                                    />
-                                    <span className="text-sm text-slate-700">{priority}</span>
-                                 </label>
+                        {/* Clear button */}
+                        {(filterField || isFilterActive) && (
+                           <button
+                              onClick={(e) => { e.stopPropagation(); clearFilter(); }}
+                              className="ml-auto flex-shrink-0 text-slate-400 hover:text-slate-600 transition-colors"
+                           >
+                              <X className="w-3.5 h-3.5" />
+                           </button>
+                        )}
+                     </div>
+
+                     {/* POPUP 1: Field selector */}
+                     {filterStep === 'field' && (
+                        <>
+                           <div className="fixed inset-0 z-40" onClick={() => setFilterStep(null)} />
+                           <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1 overflow-hidden">
+                              {filterFields.map(field => (
+                                 <button
+                                    key={field.value}
+                                    onClick={() => {
+                                       setFilterField(field.value as any);
+                                       setFilterValue('');
+                                       setSelectedStatuses([]);
+                                       setSelectedPriorities([]);
+                                       setIsFilterActive(false);
+                                       setFilterOperator(null);
+                                       // Always go to operator step first
+                                       setFilterStep('operator');
+                                    }}
+                                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left"
+                                 >
+                                    {field.icon}
+                                    <span>{field.label}</span>
+                                 </button>
                               ))}
                            </div>
-                           <div className="border-t border-slate-100 p-2">
-                              <button
-                                 onClick={() => {
-                                    setIsFilterActive(filterField === 'status' ? selectedStatuses.length > 0 : selectedPriorities.length > 0);
-                                    setFilterStep(null);
-                                 }}
-                                 className="w-full px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
-                              >
-                                 Apply
-                              </button>
+                        </>
+                     )}
+
+                     {/* POPUP 2: Operator selector */}
+                     {filterStep === 'operator' && filterField && (
+                        <>
+                           <div className="fixed inset-0 z-40" onClick={() => setFilterStep(null)} />
+                           <div className="absolute top-full left-0 mt-1 w-36 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1 overflow-hidden">
+                              {getOperators().map(op => (
+                                 <button
+                                    key={op.value}
+                                    onClick={() => {
+                                       setFilterOperator(op.value as any);
+                                       setFilterStep('value');
+                                    }}
+                                    className="w-full flex items-center px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left"
+                                 >
+                                    {op.label}
+                                 </button>
+                              ))}
                            </div>
-                        </div>
-                     </>
-                  )}
-               </div>
+                        </>
+                     )}
 
-               {/* Active filter result count */}
-               {isFilterActive && (
-                  <div className="text-xs text-slate-500 px-1">
-                     {filteredRequests.length} result{filteredRequests.length !== 1 ? 's' : ''}
-                  </div>
-               )}
-
-               <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                  {filteredRequests && filteredRequests.length > 0 ? (
-                     <div className="divide-y divide-slate-100">
-                        {filteredRequests.map(req => (
-                           <div
-                              key={req.id}
-                              onClick={() => { setSelectedRequest(req); setIsRequestModalOpen(true); }}
-                              className="p-6 flex gap-4 hover:bg-slate-50 transition-colors group relative cursor-pointer"
-                           >
-                              <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${req.type === 'Bug' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'} `}>
-                                 {req.type === 'Bug' ? <AlertCircle className="w-6 h-6" /> : <CheckSquare className="w-6 h-6" />}
+                     {/* POPUP 3: Value selector for Status/Priority (multi-select) */}
+                     {filterStep === 'value' && (filterField === 'status' || filterField === 'priority') && (
+                        <>
+                           <div className="fixed inset-0 z-40" onClick={() => { setIsFilterActive(filterField === 'status' ? selectedStatuses.length > 0 : selectedPriorities.length > 0); setFilterStep(null); }} />
+                           <div className="absolute top-full left-0 mt-1 w-56 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                              <div className="max-h-64 overflow-y-auto py-1">
+                                 {filterField === 'status' ? [
+                                    'Pending', 'Reviewing', 'Converted To Task', 'Rejected',
+                                    'Acknowledged', 'Under Consideration', 'Implemented',
+                                    'Not Planned', 'Resolved', 'Duplicate', 'Cannot Reproduce'
+                                 ].map(status => (
+                                    <label key={status} className="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 cursor-pointer">
+                                       <input
+                                          type="checkbox"
+                                          checked={selectedStatuses.includes(status.toLowerCase())}
+                                          onChange={(e) => {
+                                             if (e.target.checked) setSelectedStatuses([...selectedStatuses, status.toLowerCase()]);
+                                             else setSelectedStatuses(selectedStatuses.filter(s => s !== status.toLowerCase()));
+                                          }}
+                                          className="w-4 h-4 text-indigo-600 border-slate-300 rounded"
+                                       />
+                                       <span className="text-sm text-slate-700">{status}</span>
+                                    </label>
+                                 )) : ['Low', 'Medium', 'High', 'Critical'].map(priority => (
+                                    <label key={priority} className="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 cursor-pointer">
+                                       <input
+                                          type="checkbox"
+                                          checked={selectedPriorities.includes(priority.toLowerCase())}
+                                          onChange={(e) => {
+                                             if (e.target.checked) setSelectedPriorities([...selectedPriorities, priority.toLowerCase()]);
+                                             else setSelectedPriorities(selectedPriorities.filter(p => p !== priority.toLowerCase()));
+                                          }}
+                                          className="w-4 h-4 text-indigo-600 border-slate-300 rounded"
+                                       />
+                                       <span className="text-sm text-slate-700">{priority}</span>
+                                    </label>
+                                 ))}
                               </div>
-                              <div className="flex-1">
-                                 <div className="flex items-center gap-3 mb-1.5">
-                                    <h4 className="font-bold text-slate-800 text-lg group-hover:text-indigo-600 transition-colors">{req.title}</h4>
-                                    <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase ${req.status === 'Pending' ? 'bg-amber-100 text-amber-700' :
-                                       req.status === 'Converted to Task' ? 'bg-emerald-100 text-emerald-700' :
-                                          req.status === 'Rejected' ? 'bg-slate-100 text-slate-500' :
-                                             req.status === 'Acknowledged' ? 'bg-blue-100 text-blue-700' :
-                                                req.status === 'Under Consideration' ? 'bg-purple-100 text-purple-700' :
-                                                   req.status === 'Implemented' ? 'bg-green-100 text-green-700' :
-                                                      req.status === 'Not Planned' ? 'bg-gray-100 text-gray-600' :
-                                                         req.status === 'Resolved' ? 'bg-teal-100 text-teal-700' :
-                                                            req.status === 'Duplicate' ? 'bg-orange-100 text-orange-700' :
-                                                               req.status === 'Cannot Reproduce' ? 'bg-yellow-100 text-yellow-700' :
-                                                                  'bg-slate-100 text-slate-600'
-                                       }`}>
-                                       {req.status}
-                                    </span>
-                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wide border border-slate-200 px-2 py-0.5 rounded-full">{req.priority} Priority</span>
-                                 </div>
-                                 <p className="text-sm text-slate-600 mb-3 leading-relaxed line-clamp-2">{req.description}</p>
-                                 <div className="flex items-center gap-4 text-xs text-slate-400">
-                                    <span>Ref ID: <span className="font-mono text-slate-500">{req.id}</span></span>
-                                    <span>Submitted: {req.submittedAt}</span>
-                                 </div>
-                              </div>
-
-                              {/* Actions */}
-                              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                 {req.status === 'Pending' && (
-                                    <>
-                                       <button
-                                          onClick={(e) => { e.stopPropagation(); setSelectedRequest(req); setIsRequestModalOpen(true); }}
-                                          title="Edit Request"
-                                          className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
-                                       >
-                                          <div className="w-5 h-5 flex items-center justify-center"><Briefcase className="w-4 h-4" /></div> {/* Hack for Pencil icon missing import, using Briefcase temporarily or add import */}
-                                       </button>
-                                       <button
-                                          onClick={(e) => { e.stopPropagation(); handleDeleteRequest(req.id); }}
-                                          title="Delete Request"
-                                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                       >
-                                          <X className="w-5 h-5" />
-                                       </button>
-                                    </>
-                                 )}
-                                 <button className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all">
-                                    <ArrowUpRight className="w-5 h-5" />
+                              <div className="border-t border-slate-100 p-2">
+                                 <button
+                                    onClick={() => {
+                                       setIsFilterActive(filterField === 'status' ? selectedStatuses.length > 0 : selectedPriorities.length > 0);
+                                       setFilterStep(null);
+                                    }}
+                                    className="w-full px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
+                                 >
+                                    Apply
                                  </button>
                               </div>
                            </div>
-                        ))}
-                     </div>
-                  ) : (
-                     <div className="flex flex-col items-center justify-center py-20">
-                        <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                           <Briefcase className="w-8 h-8 text-slate-300" />
-                        </div>
-                        <p className="text-slate-500 font-medium">
-                           {isFilterActive && filterValue ? 'No requests match your filter criteria.' : 'No requests submitted yet.'}
-                        </p>
-                        {!isFilterActive && (
-                           <button onClick={() => setIsRequestModalOpen(true)} className="mt-4 text-indigo-600 text-sm font-bold hover:underline">Submit your first request</button>
-                        )}
+                        </>
+                     )}
+                  </div>
+
+                  {/* Active filter result count */}
+                  {isFilterActive && (
+                     <div className="text-xs text-slate-500 px-1">
+                        {filteredRequests.length} result{filteredRequests.length !== 1 ? 's' : ''}
                      </div>
                   )}
+
+                  <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                     {filteredRequests && filteredRequests.length > 0 ? (
+                        <div className="divide-y divide-slate-100">
+                           {filteredRequests.map(req => (
+                              <div
+                                 key={req.id}
+                                 onClick={() => { setSelectedRequest(req); setIsRequestModalOpen(true); }}
+                                 className="p-6 flex gap-4 hover:bg-slate-50 transition-colors group relative cursor-pointer"
+                              >
+                                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${req.type === 'Bug' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'} `}>
+                                    {req.type === 'Bug' ? <AlertCircle className="w-6 h-6" /> : <CheckSquare className="w-6 h-6" />}
+                                 </div>
+                                 <div className="flex-1">
+                                    <div className="flex items-center gap-3 mb-1.5">
+                                       <h4 className="font-bold text-slate-800 text-lg group-hover:text-indigo-600 transition-colors">{req.title}</h4>
+                                       <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase ${req.status === 'Pending' ? 'bg-amber-100 text-amber-700' :
+                                          req.status === 'Converted to Task' ? 'bg-emerald-100 text-emerald-700' :
+                                             req.status === 'Rejected' ? 'bg-slate-100 text-slate-500' :
+                                                req.status === 'Acknowledged' ? 'bg-blue-100 text-blue-700' :
+                                                   req.status === 'Under Consideration' ? 'bg-purple-100 text-purple-700' :
+                                                      req.status === 'Implemented' ? 'bg-green-100 text-green-700' :
+                                                         req.status === 'Not Planned' ? 'bg-gray-100 text-gray-600' :
+                                                            req.status === 'Resolved' ? 'bg-teal-100 text-teal-700' :
+                                                               req.status === 'Duplicate' ? 'bg-orange-100 text-orange-700' :
+                                                                  req.status === 'Cannot Reproduce' ? 'bg-yellow-100 text-yellow-700' :
+                                                                     'bg-slate-100 text-slate-600'
+                                          }`}>
+                                          {req.status}
+                                       </span>
+                                       <span className="text-xs font-bold text-slate-400 uppercase tracking-wide border border-slate-200 px-2 py-0.5 rounded-full">{req.priority} Priority</span>
+                                    </div>
+                                    <p className="text-sm text-slate-600 mb-3 leading-relaxed line-clamp-2">{req.description}</p>
+                                    <div className="flex items-center gap-4 text-xs text-slate-400">
+                                       <span>Ref ID: <span className="font-mono text-slate-500">{req.id}</span></span>
+                                       <span>Submitted: {req.submittedAt}</span>
+                                    </div>
+                                 </div>
+
+                                 {/* Actions */}
+                                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    {req.status === 'Pending' && (
+                                       <>
+                                          <button
+                                             onClick={(e) => { e.stopPropagation(); setSelectedRequest(req); setIsRequestModalOpen(true); }}
+                                             title="Edit Request"
+                                             className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                          >
+                                             <div className="w-5 h-5 flex items-center justify-center"><Briefcase className="w-4 h-4" /></div> {/* Hack for Pencil icon missing import, using Briefcase temporarily or add import */}
+                                          </button>
+                                          <button
+                                             onClick={(e) => { e.stopPropagation(); handleDeleteRequest(req.id); }}
+                                             title="Delete Request"
+                                             className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                          >
+                                             <X className="w-5 h-5" />
+                                          </button>
+                                       </>
+                                    )}
+                                    <button className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all">
+                                       <ArrowUpRight className="w-5 h-5" />
+                                    </button>
+                                 </div>
+                              </div>
+                           ))}
+                        </div>
+                     ) : (
+                        <div className="flex flex-col items-center justify-center py-20">
+                           <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                              <Briefcase className="w-8 h-8 text-slate-300" />
+                           </div>
+                           <p className="text-slate-500 font-medium">
+                              {isFilterActive && filterValue ? 'No requests match your filter criteria.' : 'No requests submitted yet.'}
+                           </p>
+                           {!isFilterActive && (
+                              <button onClick={() => setIsRequestModalOpen(true)} className="mt-4 text-indigo-600 text-sm font-bold hover:underline">Submit your first request</button>
+                           )}
+                        </div>
+                     )}
+                  </div>
                </div>
-            </div>
-         )}
-      </div>
+            )
+         }
+      </div >
    );
 };
 

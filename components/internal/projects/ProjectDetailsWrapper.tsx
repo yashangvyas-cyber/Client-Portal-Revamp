@@ -6,6 +6,7 @@ import { ProjectOverview } from './tabs/ProjectOverview';
 import { ProjectResources } from './tabs/ProjectResources';
 import { ProjectTopUp } from './tabs/ProjectTopUp';
 import { ProjectTimesheet } from '../tasks/ProjectTimesheet';
+import { ProjectLogs } from './tabs/ProjectLogs';
 import { ProjectBilling } from './tabs/ProjectBilling';
 import { ProjectMilestones } from './tabs/ProjectMilestones';
 import { PlaceholderTab } from './tabs/PlaceholderTab';
@@ -39,7 +40,7 @@ export const ProjectDetailsWrapper: React.FC<ProjectDetailsWrapperProps> = ({ pr
          case ProjectType.HOURLY:
             return [...common, 'Top-Up', ...logs, 'Billing'];
          case ProjectType.FIXED:
-            return [common[0], 'Milestones', 'Documents', 'Resources', 'Change Requests', ...logs];
+            return [common[0], 'Milestones', 'Documents', 'Resources', 'Top-Up', ...logs];
          case ProjectType.HIRE_BASE:
             return [...common, ...logs];
          default:
@@ -55,7 +56,7 @@ export const ProjectDetailsWrapper: React.FC<ProjectDetailsWrapperProps> = ({ pr
          case 'Details': return <ProjectOverview project={project} />;
          case 'Resources': return <ProjectResources project={project} />;
          case 'Top-Up': return <ProjectTopUp project={project} />;
-         case 'Project Logs': return <ProjectTimesheet project={project} />;
+         case 'Project Logs': return <ProjectLogs project={project} />;
          case 'Billing': return <ProjectBilling project={project} />;
          case 'Milestones': return <ProjectMilestones project={project} />;
          case 'Documents': return <ProjectDocuments project={project} />;

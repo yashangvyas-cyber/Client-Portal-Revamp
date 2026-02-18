@@ -308,25 +308,6 @@ export const ClientTimesheet: React.FC<ClientTimesheetProps> = ({ project }) => 
                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
                   </div>
 
-                  {/* Density Toggle */}
-                  <div className="flex bg-slate-100 p-1 rounded-lg" title="Toggle Density">
-                     <button
-                        onClick={() => setDensity('comfortable')}
-                        className={`p-1.5 rounded-md text-slate-500 transition-all ${density === 'comfortable' ? 'bg-white text-indigo-600 shadow-sm' : 'hover:text-slate-700'}`}
-                     >
-                        <AlignJustify className="w-3.5 h-3.5" />
-                     </button>
-                     <button
-                        onClick={() => setDensity('compact')}
-                        className={`p-1.5 rounded-md text-slate-500 transition-all ${density === 'compact' ? 'bg-white text-indigo-600 shadow-sm' : 'hover:text-slate-700'}`}
-                     >
-                        <AlignLeft className="w-3.5 h-3.5" />
-                     </button>
-                  </div>
-
-                  <button className="flex items-center gap-1.5 border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold text-indigo-600 hover:bg-indigo-50 transition-colors">
-                     <Download className="w-3.5 h-3.5" /> Report
-                  </button>
                </div>
             </div>
 

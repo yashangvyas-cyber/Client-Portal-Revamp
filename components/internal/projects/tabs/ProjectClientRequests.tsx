@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Project, ClientRequest, RequestComment, Task, TaskStatus, Priority } from '../../../../types';
 import { useSharedData } from '../../../../context/SharedDataContext';
 import { CreateIssueModal } from '../../tasks/CreateIssueModal';
@@ -13,7 +13,8 @@ interface ProjectClientRequestsProps {
 export const ProjectClientRequests: React.FC<ProjectClientRequestsProps> = ({ project, onRequestConvert }) => {
     const { updateClientRequest, currentUser, addTask } = useSharedData();
     const requests = project.clientRequests || [];
-    const [selectedRequest, setSelectedRequest] = useState<ClientRequest | null>(null);
+    const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
+    const selectedRequest = requests.find(r => r.id === selectedRequestId) || null;
 
     // Helper function for status badge styling
     const getStatusStyle = (status: string) => {
@@ -42,6 +43,15 @@ export const ProjectClientRequests: React.FC<ProjectClientRequestsProps> = ({ pr
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [requestToConvert, setRequestToConvert] = useState<ClientRequest | null>(null);
 
+    // Toast notification state
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+    useEffect(() => {
+        if (toast) { const t = setTimeout(() => setToast(null), 3500); return () => clearTimeout(t); }
+    }, [toast]);
+
+    // Change Status flow: 'confirm' -> 'select'
+    const [changeStatusFlow, setChangeStatusFlow] = useState<null | 'confirm' | 'select'>(null);
+
     // Get status options based on request type
     const getStatusOptions = (type: ClientRequest['type']): ClientRequest['status'][] => {
         if (type === 'Bug') {
@@ -56,7 +66,8 @@ export const ProjectClientRequests: React.FC<ProjectClientRequestsProps> = ({ pr
     const handleStatusChange = (reqId: string, newStatus: ClientRequest['status'], reason?: string) => {
         updateClientRequest(project.id, reqId, {
             status: newStatus,
-            rejectionReason: reason
+            rejectionReason: reason,
+            rejectedBy: newStatus === 'Rejected' ? currentUser : undefined
         });
     };
 
@@ -66,40 +77,32 @@ export const ProjectClientRequests: React.FC<ProjectClientRequestsProps> = ({ pr
         // Special handling for "Converted to Task"
         if (selectedNewStatus === 'Converted to Task') {
             handleConvertClick(selectedRequest);
+            return;
         } else if (selectedNewStatus === 'Rejected') {
             // Trigger Rejection Workflow
             setIsRejecting(true);
         } else {
             handleStatusChange(selectedRequest.id, selectedNewStatus);
-            setSelectedRequest(null);
+            setSelectedRequestId(null);
             setSelectedNewStatus('');
         }
     };
 
     const handleConvertClick = (req: ClientRequest) => {
-        // Close triage modal
-        setSelectedRequest(null);
+        setSelectedRequestId(null);
         setSelectedNewStatus('');
+        setChangeStatusFlow(null);
 
-        // Open Task Creation Modal
+        // Store which request we're converting, then open task creation modal
         setRequestToConvert(req);
         setIsCreateModalOpen(true);
-
-        // Trigger parent handler (if it was doing anything else)
-        if (onRequestConvert) onRequestConvert(req);
     };
 
     const handleTaskCreated = (issueData: any) => {
         if (!requestToConvert) return;
 
-        console.log('ProjectClientRequests: handleTaskCreated called', { issueData, requestToConvert });
-
         try {
-            // 1. Generate Task ID
             const newTaskId = `T-${Math.floor(Math.random() * 10000)}`;
-
-            // 2. Create Task Object
-            // Normalize priority (e.g. "Medium" -> "MEDIUM")
             const normalizedPriority = (issueData.priority?.toUpperCase() as Priority) || Priority.MEDIUM;
 
             const newTask: Task = {
@@ -108,33 +111,29 @@ export const ProjectClientRequests: React.FC<ProjectClientRequestsProps> = ({ pr
                 description: issueData.description,
                 status: TaskStatus.TODO,
                 priority: normalizedPriority,
-                isClientVisible: issueData.isClientVisible !== false, // Default to true unless explicitly hidden
-                // Create team from assignee if present
-                team: issueData.assignee ? [{ user: currentUser, isGhost: false }] : [], // Simplification for prototype
+                isClientVisible: issueData.isClientVisible !== false,
+                team: issueData.assignee ? [{ user: currentUser, isGhost: false }] : [],
                 timeLogs: { internal: 0, billable: 0 },
                 dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
                 projectId: project.id
             };
 
-            console.log('ProjectClientRequests: Creating Task', newTask);
-
-            // 3. Add to detailed state
             addTask(project.id, newTask);
 
-            // 4. Link to Request using convertedTaskId (preserving original taskId)
-            console.log('ProjectClientRequests: Linking Task to Request', requestToConvert.id);
-            updateClientRequest(project.id, requestToConvert.id, {
+            const convertedReqId = requestToConvert.id;
+            updateClientRequest(project.id, convertedReqId, {
                 status: 'Converted to Task',
                 convertedTaskId: newTaskId
             });
 
-            // Close modal
-            console.log('ProjectClientRequests: Closing Modal');
+            // Close task creation modal and show toast
             setIsCreateModalOpen(false);
             setRequestToConvert(null);
+            setSelectedNewStatus('');
+            setToast({ message: `Task ${newTaskId} created successfully against this request.`, type: 'success' });
         } catch (error) {
-            console.error('ProjectClientRequests: Error creating task or linking request', error);
-            alert('Failed to create task. Please check console for details.');
+            console.error('Error creating task:', error);
+            setToast({ message: 'Failed to create task. Please try again.', type: 'error' });
         }
     };
 
@@ -143,7 +142,10 @@ export const ProjectClientRequests: React.FC<ProjectClientRequestsProps> = ({ pr
         handleStatusChange(selectedRequest.id, 'Rejected', rejectionReason);
         setRejectionReason('');
         setIsRejecting(false);
-        setSelectedRequest(null);
+        handleStatusChange(selectedRequest.id, 'Rejected', rejectionReason);
+        setRejectionReason('');
+        setIsRejecting(false);
+        setSelectedRequestId(null);
     };
 
     const handleAddComment = () => {
@@ -168,6 +170,18 @@ export const ProjectClientRequests: React.FC<ProjectClientRequestsProps> = ({ pr
 
     return (
         <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden min-h-[500px]">
+            {/* Toast Notification */}
+            {toast && (
+                <div className={`fixed bottom-6 right-6 z-[100] flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-xl border animate-fade-in ${toast.type === 'success'
+                    ? 'bg-emerald-600 text-white border-emerald-700'
+                    : 'bg-red-600 text-white border-red-700'
+                    }`}>
+                    <Check className="w-4 h-4 shrink-0" />
+                    <span className="text-sm font-semibold">{toast.message}</span>
+                    <button onClick={() => setToast(null)} className="ml-2 opacity-70 hover:opacity-100"><X className="w-4 h-4" /></button>
+                </div>
+            )}
+
             {/* Request Triage Modal (View Details) */}
             {selectedRequest && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
@@ -182,7 +196,7 @@ export const ProjectClientRequests: React.FC<ProjectClientRequestsProps> = ({ pr
                                     <p className="text-[10px] text-slate-500 font-mono">{selectedRequest.id}</p>
                                 </div>
                             </div>
-                            <button onClick={() => { setSelectedRequest(null); setIsRejecting(false); }} className="p-1 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors">
+                            <button onClick={() => { setSelectedRequestId(null); setIsRejecting(false); setChangeStatusFlow(null); setSelectedNewStatus(''); }} className="p-1 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
@@ -395,15 +409,76 @@ export const ProjectClientRequests: React.FC<ProjectClientRequestsProps> = ({ pr
                                         )}
                                         {selectedRequest.status !== 'Pending' && (
                                             <>
-                                                <button
-                                                    onClick={() => handleStatusChange(selectedRequest.id, 'Pending')}
-                                                    className="px-4 py-2 border border-indigo-200 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors"
-                                                >
-                                                    Change Status
-                                                </button>
-                                                <button onClick={() => setSelectedRequest(null)} className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50">
-                                                    Close
-                                                </button>
+                                                {changeStatusFlow === null && (
+                                                    <button
+                                                        onClick={() => setChangeStatusFlow('confirm')}
+                                                        className="px-4 py-2 border border-indigo-200 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors"
+                                                    >
+                                                        Change Status
+                                                    </button>
+                                                )}
+                                                {changeStatusFlow === 'confirm' && (
+                                                    <div className="flex items-center gap-2 animate-fade-in">
+                                                        <span className="text-xs text-slate-600 font-medium">Are you sure?</span>
+                                                        <button
+                                                            onClick={() => setChangeStatusFlow('select')}
+                                                            className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700"
+                                                        >
+                                                            Yes, Change
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setChangeStatusFlow(null)}
+                                                            className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                    </div>
+                                                )}
+                                                {changeStatusFlow === 'select' && (
+                                                    <div className="flex items-center gap-2 animate-fade-in">
+                                                        <select
+                                                            value={selectedNewStatus}
+                                                            onChange={(e) => setSelectedNewStatus(e.target.value as ClientRequest['status'])}
+                                                            className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                                                            autoFocus
+                                                        >
+                                                            <option value="">Select new status...</option>
+                                                            {getStatusOptions(selectedRequest.type).map(status => (
+                                                                <option key={status} value={status}>{status}</option>
+                                                            ))}
+                                                        </select>
+                                                        <button
+                                                            onClick={() => {
+                                                                if (!selectedNewStatus) return;
+                                                                if (selectedNewStatus === 'Converted to Task') {
+                                                                    handleConvertClick(selectedRequest);
+                                                                } else if (selectedNewStatus === 'Rejected') {
+                                                                    setIsRejecting(true);
+                                                                } else {
+                                                                    handleStatusChange(selectedRequest.id, selectedNewStatus);
+                                                                    setSelectedRequestId(null);
+                                                                }
+                                                                setChangeStatusFlow(null);
+                                                                setSelectedNewStatus('');
+                                                            }}
+                                                            disabled={!selectedNewStatus}
+                                                            className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 disabled:opacity-50"
+                                                        >
+                                                            Apply
+                                                        </button>
+                                                        <button
+                                                            onClick={() => { setChangeStatusFlow(null); setSelectedNewStatus(''); }}
+                                                            className="px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                    </div>
+                                                )}
+                                                {changeStatusFlow === null && (
+                                                    <button onClick={() => { setSelectedRequestId(null); setChangeStatusFlow(null); }} className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50">
+                                                        Close
+                                                    </button>
+                                                )}
                                             </>
                                         )}
                                     </>
@@ -476,7 +551,7 @@ export const ProjectClientRequests: React.FC<ProjectClientRequestsProps> = ({ pr
                                         {req.type === 'Bug' ? <AlertCircle className="w-4 h-4" /> : <CheckSquare className="w-4 h-4" />}
                                     </div>
                                 </td>
-                                <td className="px-6 py-5 max-w-sm cursor-pointer" onClick={() => setSelectedRequest(req)}>
+                                <td className="px-6 py-5 max-w-sm cursor-pointer" onClick={() => setSelectedRequestId(req.id)}>
                                     <div className="font-bold text-sm text-slate-800 mb-1 group-hover:text-indigo-600 transition-colors">{req.title}</div>
                                     <p className="text-xs text-slate-500 line-clamp-2">{req.description}</p>
                                 </td>
@@ -506,7 +581,7 @@ export const ProjectClientRequests: React.FC<ProjectClientRequestsProps> = ({ pr
                                 </td>
                                 <td className="px-6 py-5 text-right">
                                     <button
-                                        onClick={() => setSelectedRequest(req)}
+                                        onClick={() => setSelectedRequestId(req.id)}
                                         className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 transition-all"
                                     >
                                         <Eye className="w-4 h-4" />

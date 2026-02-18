@@ -101,6 +101,7 @@ export interface ClientRequest {
   taskId?: string; // Optional link to an existing task (user-selected related task)
   convertedTaskId?: string; // Task created from this request (system-generated)
   rejectionReason?: string;
+  rejectedBy?: User;
   comments?: RequestComment[];
 }
 
@@ -129,6 +130,7 @@ export interface WorkLog {
     userName: string;
   }; // The alias shown to the client
   timestamp: string;
+  internalComment?: string;
 }
 
 export type DocumentCategory = 'VAULT' | 'ASSET_LIBRARY';

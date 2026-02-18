@@ -318,10 +318,11 @@ export const ProjectTimesheet: React.FC<ProjectTimesheetProps> = ({ project }) =
                                                         <div className={`
                                                         px-2.5 py-1.5 rounded text-xs font-bold
                                                         ${totalHours >= 8
-                                                                ? 'bg-green-100 text-green-700'
+                                                                ? 'text-green-700 font-extrabold'
                                                                 : totalHours >= 4
-                                                                    ? 'bg-red-100 text-red-700'
-                                                                    : 'bg-white text-slate-700'}
+                                                                    ? 'text-slate-700'
+                                                                    : 'text-slate-500'}
+                                                        bg-white
                                                         ${borderStyle}
                                                     `}>
                                                             {hasDiscrepancy ? (

@@ -73,6 +73,7 @@ export const CreateIssueModal: React.FC<CreateIssueModalProps> = ({ isOpen, onCl
         };
 
         onSubmit(payload);
+        onClose();
     };
 
     const handleAssigneeSelect = (userId: string) => {

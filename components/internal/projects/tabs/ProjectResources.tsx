@@ -148,8 +148,11 @@ export const ProjectResources: React.FC<ProjectResourcesProps> = ({ project }) =
                         <td className="px-6 py-5 text-sm font-medium text-slate-800">{index + 1}</td>
                         <td className="px-6 py-5">
                            <div className="flex items-center gap-3">
-                              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border bg-slate-100 text-slate-500 border-slate-200`}>
-                                 {res.avatar || res.name.substring(0, 2).toUpperCase()}
+                              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border bg-slate-100 text-slate-500 border-slate-200 overflow-hidden flex-shrink-0`}>
+                                 {res.avatar
+                                    ? <img src={res.avatar} alt={res.name} className="w-full h-full object-cover" />
+                                    : res.name.substring(0, 2).toUpperCase()
+                                 }
                               </div>
                               <div>
                                  <div className="text-sm font-bold text-slate-800">{res.name}</div>

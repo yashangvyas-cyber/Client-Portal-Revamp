@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, Eye, EyeOff, User, Ghost, ArrowRight, Save, RotateCcw, Lock, AlertCircle } from 'lucide-react';
+import { X, Eye, EyeOff, User, Ghost, ArrowRight, Save, RotateCcw, Lock, AlertCircle, MessageSquare, CheckCircle } from 'lucide-react';
 import { WorkLog } from '../../../types';
 import { USERS } from '../../../constants';
 
@@ -69,6 +69,8 @@ const LogItem: React.FC<{
     log: WorkLog;
     onUpdate: (updates: Partial<WorkLog>) => void;
 }> = ({ log, onUpdate }) => {
+    const [isEditingComment, setIsEditingComment] = useState(false);
+    const [commentText, setCommentText] = useState(log.internalComment || '');
     // Determines the current billed hours (defaults to actual hours if undefined)
     const currentBilledHours = log.billedHours ?? log.hours;
     const isHoursModified = currentBilledHours !== log.hours;
@@ -105,7 +107,11 @@ const LogItem: React.FC<{
                     </div>
                     <div>
                         <div className={`text-sm font-bold ${!log.isClientVisible ? 'text-slate-500' : 'text-slate-800'}`}>{log.userName}</div>
-                        <div className="text-xs text-slate-500">{log.taskTitle}</div>
+                        <div className="text-xs text-slate-500 flex items-center gap-1.5">
+                            <span className="font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">{log.taskId}</span>
+                            <span className="text-slate-400">|</span>
+                            <span>{log.taskTitle}</span>
+                        </div>
                     </div>
                 </div>
 
@@ -113,7 +119,7 @@ const LogItem: React.FC<{
                     {/* Hours Control Section */}
                     <div className="flex flex-col items-end gap-1">
                         <div className="flex items-center gap-2">
-                            <div className="text-[10px] uppercase font-bold text-slate-400">Actual:</div>
+                            <div className="text-[10px] uppercase font-bold text-slate-400">Spent:</div>
                             <div className="text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">{log.hours.toFixed(2)}h</div>
                         </div>
 
@@ -152,44 +158,88 @@ const LogItem: React.FC<{
 
                     <button
                         onClick={toggleVisibility}
-                        className={`p-2 rounded-lg border transition-all flex flex-col items-center gap-1 min-w-[60px] ${log.isClientVisible ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100' : 'bg-slate-100 text-slate-400 border-slate-200 hover:bg-slate-200'}`}
+                        className={`p-2 rounded-lg border transition-all flex items-center justify-center min-w-[36px] ${log.isClientVisible ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100' : 'bg-slate-100 text-slate-400 border-slate-200 hover:bg-slate-200'}`}
                         title={log.isClientVisible ? "Visible to Client" : "Internal Only"}
                     >
                         {log.isClientVisible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                        <span className="text-[9px] font-bold uppercase">{log.isClientVisible ? 'Public' : 'Hidden'}</span>
                     </button>
 
-                    {/* Approval Button */}
-                    {log.isClientVisible && !log.isBilled && (
-                        <>
-                            <div className="w-[1px] h-8 bg-slate-200 mx-2"></div>
-                            <button
-                                onClick={() => onUpdate({ isBilled: true })}
-                                className="px-3 py-2 rounded-lg border-2 border-amber-500 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-all flex items-center gap-2 font-bold text-xs"
-                                title="Approve and finalize this entry for client billing"
-                            >
-                                <Save className="w-4 h-4" />
-                                Approve & Finalize
-                            </button>
-                        </>
+                    {/* Action Buttons */}
+                    <div className="w-[1px] h-8 bg-slate-200 mx-2"></div>
+
+                    <button
+                        onClick={() => {
+                            setCommentText(log.internalComment || '');
+                            setIsEditingComment(!isEditingComment);
+                        }}
+                        className={`p-2 rounded-lg border transition-all ${log.internalComment || isEditingComment ? 'bg-indigo-50 text-indigo-600 border-indigo-200 hover:bg-indigo-100' : 'bg-white text-slate-400 border-slate-200 hover:border-indigo-200 hover:text-indigo-600'}`}
+                        title={log.internalComment ? "Edit Internal Comment" : "Add Internal Comment"}
+                    >
+                        <MessageSquare className="w-4 h-4" />
+                    </button>
+
+                    {!log.isBilled ? (
+                        <button
+                            onClick={() => onUpdate({ isBilled: true })}
+                            className="p-2 rounded-lg border border-slate-200 hover:border-green-200 hover:bg-green-50 text-slate-400 hover:text-green-600 transition-all font-bold"
+                            title="Bill / Approve"
+                        >
+                            <CheckCircle className="w-4 h-4" />
+                        </button>
+                    ) : (
+                        <div className="p-2 rounded-lg bg-green-50 text-green-600 border border-green-200" title="Billed">
+                            <CheckCircle className="w-4 h-4" />
+                        </div>
                     )}
 
-                    {/* Approved Status */}
-                    {log.isClientVisible && log.isBilled && (
-                        <>
-                            <div className="w-[1px] h-8 bg-slate-200 mx-2"></div>
-                            <div className="px-3 py-2 rounded-lg border-2 border-green-500 bg-green-50 text-green-700 flex items-center gap-2 font-bold text-xs">
-                                <Save className="w-4 h-4" />
-                                Approved
-                            </div>
-                        </>
-                    )}
+
                 </div>
             </div>
 
             <div className={`text-xs mb-1 p-2.5 rounded border ${!log.isClientVisible ? 'bg-slate-100 text-slate-500 border-slate-200' : 'bg-slate-50 text-slate-600 border-slate-100 italic'}`}>
                 "{log.description}"
             </div>
+
+            {isEditingComment ? (
+                <div className="mt-2 p-3 bg-slate-50 border border-slate-200 rounded-lg animate-fade-in">
+                    <textarea
+                        className="w-full text-xs p-2 border border-slate-300 rounded focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none resize-none bg-white text-slate-700"
+                        rows={3}
+                        placeholder="Add internal rationale for this log..."
+                        value={commentText}
+                        onChange={(e) => setCommentText(e.target.value)}
+                        autoFocus
+                    />
+                    <div className="flex justify-end gap-2 mt-2">
+                        <button
+                            onClick={() => setIsEditingComment(false)}
+                            className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-slate-200 rounded transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={() => {
+                                onUpdate({ internalComment: commentText });
+                                setIsEditingComment(false);
+                            }}
+                            className="px-3 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded transition-colors flex items-center gap-1"
+                        >
+                            <Save className="w-3 h-3" />
+                            Save Note
+                        </button>
+                    </div>
+                </div>
+            ) : (
+                log.internalComment && (
+                    <div className="flex items-start gap-2 mt-2 p-2 bg-indigo-50/50 border border-indigo-100 rounded text-xs text-indigo-800">
+                        <MessageSquare className="w-3 h-3 mt-0.5 shrink-0 opacity-70" />
+                        <div>
+                            <span className="font-bold uppercase text-[10px] opacity-70 block mb-0.5">Internal Note:</span>
+                            {log.internalComment}
+                        </div>
+                    </div>
+                )
+            )}
         </div>
     );
 }
